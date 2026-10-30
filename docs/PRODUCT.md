@@ -18,8 +18,8 @@ Your day is a **timeline you play**. Plan it as blocks, live it as a run: finish
 ## The timeline (Nipanko's spec, 30 Oct 2026)
 - The main screen is a **timeline with dates and times** that keeps **moving like a clock, down to the second**, with progress bars.
 - The user picks a moment on it (a second, minute, hour, day, week, month or year) and adds a **note, todo, reminder or task** there.
-- **Layers** the user chooses and shows/hides. *Assumed: one lane per area of life (Work, Study, Health…), like git branches. Confirm.*
-- Works **vertical, horizontal or any direction**. *Assumed: down, up, right, left now; a round clock view later. Confirm.*
+- **Layers** the user chooses and shows/hides: one lane per area of life (Work, Study, Health…), like git branches. *(Confirmed 30 Oct.)*
+- Works **vertical, horizontal or any direction**: down, up, right, left in the MVP; a round clock view later. *(Confirmed 30 Oct.)*
 - Plus the common productivity features, in the game style.
 - How it's built: `ARCHITECTURE.md`. How it looks: `DESIGN.md`. Why the game rules: `RESEARCH.md`.
 

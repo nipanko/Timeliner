@@ -4,8 +4,8 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 0, concept & validation
-- **Current task:** Nipanko reviews the UI canvas + confirms the two assumptions in PRODUCT.md (layers = lanes; directions = down/up/right/left)
-- **Next:** fill "who it's for" in PRODUCT.md; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
+- **Current task:** Nipanko reviews the UI canvas (layers = lanes and the 4 directions are confirmed)
+- **Next:** fill "who it's for" and confirm "what makes it different" in PRODUCT.md; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
 - **Blocked on:** —
 
 ## Session log
