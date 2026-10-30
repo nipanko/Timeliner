@@ -5,13 +5,14 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { streak } from '@/core/game/streaks';
-import { levelFor, totalXp } from '@/core/game/xp';
+import { levelFor, REVIEW_XP, totalXp } from '@/core/game/xp';
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, floorUnit } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
+import { useReviewedDays } from '@/features/review/data';
 import { syncEntryNotifications } from '@/lib/notifications';
 import { useNow } from '@/hooks/useNow';
 import { usePalette } from '@/ui/theme';
@@ -37,7 +38,8 @@ export function TimelineScreen() {
   const scale = getScale(scaleId);
   const hour = new Date(now).getHours();
   const focused = useFocusedByEntry(now);
-  const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))));
+  const reviewed = useReviewedDays();
+  const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))) + REVIEW_XP * reviewed.length);
   useEffect(() => {
     syncEntryNotifications(entries, Date.now());
   }, [entries]);
@@ -75,7 +77,7 @@ export function TimelineScreen() {
           <Text style={[styles.streak, { color: c.ink }]}>{run.days}d streak{run.freezes ? ` · ${run.freezes} freeze${run.freezes > 1 ? 's' : ''}` : ''}</Text>
         </View>
 
-        <View style={[styles.panel, styles.periods, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open today's review" onPress={() => router.push('/review')} style={[styles.panel, styles.periods, { backgroundColor: c.panel, boxShadow: c.raised }]}>
           {PERIODS.map(([label, period]) => {
             const f = periodProgress(now, period);
             return (
@@ -90,7 +92,7 @@ export function TimelineScreen() {
               </View>
             );
           })}
-        </View>
+        </Pressable>
 
         <View style={[styles.panel, styles.zoomBar, { backgroundColor: c.panel, boxShadow: c.raised }]}>
           {SCALES.map((s) => {

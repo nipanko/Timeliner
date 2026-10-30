@@ -4,14 +4,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–4. Slice 5 is on branch `focus/notifications` (checked out), not merged. 46 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries slice 5 on the phone (notifications only work there), then says merge; next slice 6 = Review + streak details (end-of-day run summary).
+- **Where the code is:** `main` has scaffold + slices 1–5. Slice 6 is on branch `review/day` (checked out), not merged. 50 tests, typecheck and lint green.
+- **Resume with:** Nipanko tries the Review (tap the Day/Week/Month/Year bars), then says merge; next slice 7 = Journey (goals, milestones, badges).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (3)
+- Slice 5 merged. Branch `review/day` (slice 6): `core/game/review.ts` summarizeDay (path done/missed/open, focus, XP today, plan vs actual over focused tasks, best moment); `day_logs` table; Review screen (`/review`, from the period bars): tiles, path with neutral gaps + "Tomorrow" for missed items, plan vs actual hint, tomorrow's first task at 9 AM, best moment last, "Close the day" +5 XP (counted in the header).
+- Fixed: stray seconds of focus no longer count (gave "100% faster"); serve-web.js no longer crashes while `dist/` is rebuilt.
+- Checked on the web build: review renders from real data; closing the day saved.
+
 ### 2026-10-31 (2)
 - Slice 4 merged. Branch `focus/notifications` (slice 5): `focus_sessions` table; Focus screen (`/focus/[id]`, from "Focus on this" in the sheet): countdown of the planned length, pause/resume, stop, done; time derived from timestamps so reloads/locks don't break it. Calibration +5 XP when focused time is within 20 % of plan. Local notifications (expo-notifications): reminders and task starts for the next 48 h, refreshed when entries change; focus-end alert; none on web.
 - Checked on the web build: start, countdown, done → task done, XP 28 and 1-day streak in the header. Notifications not tested (phone only).

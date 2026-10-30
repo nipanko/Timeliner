@@ -33,6 +33,7 @@ function MigratedApp({ db }: { db: Db }) {
         <Stack.Screen name="index" />
         <Stack.Screen name="entry/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="focus/[id]" />
+        <Stack.Screen name="review" />
       </Stack>
     </GestureHandlerRootView>
   );

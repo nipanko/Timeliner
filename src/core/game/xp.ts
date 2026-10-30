@@ -11,6 +11,8 @@ const DONE_XP: Record<EntryKind, number> = { task: 10, todo: 5, reminder: 2, not
 const PLAN_AHEAD_XP = 2;
 const PLAN_AHEAD_MAX_PER_DAY = 10;
 const CALIBRATION_XP = 5;
+/** Earned once per day closed in Review (RESEARCH.md #6, #19). */
+export const REVIEW_XP = 5;
 
 /** XP for finishing one entry: tasks earn 10 + 1 per 5 planned minutes (max +20), +5 when focused time was within 20 % of plan. */
 export function entryXp(e: ScoredEntry): number {

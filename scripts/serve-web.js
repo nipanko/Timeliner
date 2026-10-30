@@ -15,6 +15,9 @@ http
     res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
-    fs.createReadStream(file).pipe(res);
+    // The folder can be mid-rebuild; answer 404 instead of crashing the server.
+    fs.createReadStream(file)
+      .on('error', () => res.writeHead(404).end())
+      .pipe(res);
   })
   .listen(port, () => console.log(`serving ${root} on http://localhost:${port}`));

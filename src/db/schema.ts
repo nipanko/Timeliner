@@ -43,3 +43,9 @@ export const focusSessions = sqliteTable('focus_sessions', {
   pausedMs: integer().notNull().default(0),
   pausedAt: integer(),
 });
+
+/** One row per reviewed day (local midnight, epoch ms); each earns the daily review XP. */
+export const dayLogs = sqliteTable('day_logs', {
+  day: integer().primaryKey(),
+  reviewedAt: integer().notNull(),
+});
