@@ -152,7 +152,8 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
     };
   }, [entries, layers, scale, direction, center, origin, span, L, sign, vertical]);
 
-  const today = floorUnit(useNow(60_000), 'day');
+  const minuteNow = useNow(60_000);
+  const today = floorUnit(minuteNow, 'day');
   const place = (at: number, len: number, cross: number, crossLen: number): ViewStyle =>
     vertical ? { top: at, height: len, left: cross, width: crossLen } : { left: at, width: len, top: cross, height: crossLen };
   const body: ViewStyle = vertical ? { top: HDR, left: 0, right: 0, bottom: 0 } : { left: HDR, top: 0, bottom: 0, right: 0 };
@@ -179,7 +180,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
           <GestureDetector gesture={pan}>
             <View style={[styles.abs, body, styles.clip]} accessibilityLabel="Timeline. Drag to move through time.">
               <Pressable accessible={false} onPress={(e) => tapEmpty(e.nativeEvent.locationX, e.nativeEvent.locationY)} style={[styles.abs, styles.fill]} />
-              <Animated.View entering={FadeIn.duration(250)} style={[styles.abs, styles.fill, styles.passThrough, contentStyle]}>
+              <Animated.View entering={FadeIn.duration(250)} pointerEvents="box-none" style={[styles.abs, styles.fill, contentStyle]}>
                 {laid.majors.map((m) => (
                   <View key={`l${m.t}`} style={[styles.abs, styles.noTouch, place(m.at, 1, GUT, C), { backgroundColor: c.line }]} />
                 ))}
@@ -187,7 +188,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
                   <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
                 ))}
                 {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} />
+                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} now={minuteNow} />
                 ))}
                 {laid.majors.filter((m) => m.label).map((m) => (
                   <Text
@@ -200,9 +201,9 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
                 ))}
               </Animated.View>
 
-              <Animated.View style={[styles.abs, styles.fill, styles.noTouch, { backgroundColor: c.veil }, veilStyle]} />
+              <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, { backgroundColor: c.veil }, veilStyle]} />
 
-              <Animated.View style={[styles.abs, zeroAlong, styles.visible, styles.noTouch, nowStyle]}>
+              <Animated.View pointerEvents="none" style={[styles.abs, zeroAlong, styles.visible, nowStyle]}>
                 <View style={[styles.abs, vertical ? { top: -1.5, height: 3, left: GUT - 4, right: 0 } : { left: -1.5, width: 3, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accent }]} />
                 <View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accent }]}>
                   <ClockText color={c.accentInk} />
@@ -245,9 +246,10 @@ type ItemProps = {
   laneStart: number;
   laneW: number;
   onOpen: (entryId: string) => void;
+  now: number;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen }: ItemProps) {
+function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, now }: ItemProps) {
   const { entry, shape } = it;
   const sub = laneW / it.columns;
   const start = laneStart + it.column * sub;
@@ -256,15 +258,19 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen }: ItemP
   }
   const flatPill = !vertical && shape === 'pill';
   const frame = place(it.at, it.len, flatPill ? start + (sub - 30) / 2 : start + 4, flatPill ? 30 : sub - 8);
-  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : ''}`;
-  const look = { backgroundColor: layer.color.fill, opacity: entry.done ? 0.55 : 1 };
+  // A missed task stays as a neutral gap, never a red failure (RESEARCH.md #10).
+  const skipped = entry.kind === 'task' && !entry.done && entry.end !== null && entry.end <= now;
+  const look = skipped
+    ? { backgroundColor: 'transparent', borderWidth: 2, borderStyle: 'dashed' as const, borderColor: c.lineStrong }
+    : { backgroundColor: layer.color.fill, opacity: entry.done ? 0.55 : 1 };
+  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : skipped ? ', missed' : ''}`;
 
   if (shape === 'compact' || shape === 'dot') {
     return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, { borderRadius: 4 }]} />;
   }
   const showTime = shape === 'card' && entry.granularity === 'moment' && it.len > (vertical ? 48 : 110);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, shape === 'card' ? styles.card : styles.pillItem, { boxShadow: c.raisedSm }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }]}>
       <View style={styles.row}>
         {entry.kind !== 'task' && <View style={[styles.kindMark, kindMarks[entry.kind], { borderColor: layer.color.ink, backgroundColor: entry.kind === 'note' ? layer.color.ink : 'transparent' }]} />}
         <Text numberOfLines={1} style={[styles.itemTitle, { color: layer.color.ink }, entry.done && entry.kind === 'todo' && styles.struck]}>
@@ -297,8 +303,7 @@ const styles = StyleSheet.create({
   fill: { top: 0, left: 0, right: 0, bottom: 0 },
   clip: { overflow: 'hidden' },
   visible: { overflow: 'visible' },
-  noTouch: { pointerEvents: 'none' },
-  passThrough: { pointerEvents: 'box-none' },
+  noTouch: { pointerEvents: 'none' }, // as a style it's dropped on Animated views on web, so those use the prop
   tick: { fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
   tickV: { textAlign: 'right', lineHeight: 16 },
   tickH: { textAlign: 'center' },

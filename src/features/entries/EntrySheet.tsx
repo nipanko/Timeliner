@@ -8,7 +8,7 @@ import { APPROX_MS, MINUTE } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import { usePalette, type Palette } from '@/ui/theme';
 
-import { deleteEntry, saveEntry, useEntry, useLayers, type Entry, type Layer } from './data';
+import { deleteEntry, saveEntry, setDone, useEntry, useLayers, type Entry, type Layer } from './data';
 
 type Props = { id: string | null; at: number; layerId?: string; scaleId: ScaleId };
 type Form = { kind: EntryKind; title: string; granularity: Granularity; at: number; lengthMin: number; layerId: string };
@@ -24,7 +24,7 @@ export function EntrySheet({ id, at, layerId, scaleId }: Props) {
   const layers = useLayers();
   if (!layers.length || (id && !existing)) return <View style={[styles.screen, { backgroundColor: c.panel }]} />;
   const initial = existing ? fromEntry(existing) : newForm(at, layerId, scaleId, layers);
-  return <EntryForm key={existing?.id ?? 'new'} id={id} initial={initial} layers={layers} />;
+  return <EntryForm key={existing?.id ?? 'new'} id={id} done={existing?.done ?? false} initial={initial} layers={layers} />;
 }
 
 function newForm(at: number, layerId: string | undefined, scaleId: ScaleId, layers: Layer[]): Form {
@@ -53,7 +53,7 @@ function close() {
   else router.replace('/');
 }
 
-function EntryForm({ id, initial, layers }: { id: string | null; initial: Form; layers: Layer[] }) {
+function EntryForm({ id, done, initial, layers }: { id: string | null; done: boolean; initial: Form; layers: Layer[] }) {
   const c = usePalette();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState(initial);
@@ -71,6 +71,11 @@ function EntryForm({ id, initial, layers }: { id: string | null; initial: Form; 
   const save = async () => {
     if (!title) return;
     await saveEntry(id, { layerId: layer.id, kind: form.kind, title, start, end, granularity });
+    close();
+  };
+  const toggleDone = async () => {
+    if (!id) return;
+    await setDone(id, !done);
     close();
   };
   const remove = async () => {
@@ -171,6 +176,11 @@ function EntryForm({ id, initial, layers }: { id: string | null; initial: Form; 
         </View>
       </ScrollView>
 
+      {id && (
+        <Pressable accessibilityRole="button" onPress={toggleDone} style={[styles.doneButton, { backgroundColor: c.chip, boxShadow: c.raisedSm }]}>
+          <Text style={[styles.saveText, { color: c.ink }]}>{done ? 'Mark not done' : 'Mark done'}</Text>
+        </Pressable>
+      )}
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled: !title }}
@@ -229,5 +239,6 @@ const styles = StyleSheet.create({
   planLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   planText: { fontSize: 15, fontWeight: '900', lineHeight: 21 },
   save: { marginHorizontal: 16, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  doneButton: { marginHorizontal: 16, marginBottom: 10, height: 50, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   saveText: { fontSize: 16, fontWeight: '900' },
 });

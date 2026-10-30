@@ -4,6 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { streak } from '@/core/game/streaks';
+import { levelFor, totalXp } from '@/core/game/xp';
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, floorUnit } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
@@ -32,6 +34,8 @@ export function TimelineScreen() {
   const layers = allLayers.filter((l) => l.visible);
   const scale = getScale(scaleId);
   const hour = new Date(now).getHours();
+  const lv = levelFor(totalXp(entries));
+  const run = streak(entries.filter((e) => e.done && (e.kind === 'task' || e.kind === 'todo')).map((e) => e.start), now);
 
   const toggleLayer = (id: string, visible: boolean) => {
     if (!visible || layers.length > 1) setLayerVisible(id, !visible); // never hide the last visible layer
@@ -47,6 +51,22 @@ export function TimelineScreen() {
         <View style={styles.greetingRow}>
           <Text style={[styles.greeting, { color: c.ink }]}>{hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}</Text>
           <Text style={[styles.date, { color: c.ink }]}>{new Date(now).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
+        </View>
+
+        <View style={[styles.panel, styles.hud, { backgroundColor: c.panel, boxShadow: c.raised }]} accessible accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes`}>
+          <View style={[styles.levelBadge, { backgroundColor: c.accent }]}>
+            <Text style={[styles.levelText, { color: c.accentInk }]}>{lv.level}</Text>
+          </View>
+          <View style={styles.xpCol}>
+            <View style={styles.periodText}>
+              <Text style={[styles.small, { color: c.ink }]}>Level {lv.level}</Text>
+              <Text style={[styles.small, { color: c.muted }]}>{lv.into} / {lv.need} XP</Text>
+            </View>
+            <View style={[styles.track, { backgroundColor: c.chip, boxShadow: c.pressedIn }]}>
+              <View style={[styles.trackFill, { width: `${(lv.into / lv.need) * 100}%`, backgroundColor: c.accent }]} />
+            </View>
+          </View>
+          <Text style={[styles.streak, { color: c.ink }]}>{run.days}d streak{run.freezes ? ` · ${run.freezes} freeze${run.freezes > 1 ? 's' : ''}` : ''}</Text>
         </View>
 
         <View style={[styles.panel, styles.periods, { backgroundColor: c.panel, boxShadow: c.raised }]}>
@@ -138,6 +158,11 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 22, fontWeight: '800' },
   date: { fontSize: 13, fontWeight: '800' },
   panel: { borderRadius: 18 },
+  hud: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 8 },
+  levelBadge: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  levelText: { fontSize: 17, fontWeight: '900' },
+  xpCol: { flex: 1, gap: 4 },
+  streak: { fontSize: 12, fontWeight: '900' },
   periods: { flexDirection: 'row', gap: 10, paddingHorizontal: 12, paddingVertical: 9 },
   period: { flex: 1, gap: 4 },
   periodText: { flexDirection: 'row', justifyContent: 'space-between' },

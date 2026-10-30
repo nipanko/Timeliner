@@ -4,15 +4,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–2. Slice 3 is on branch `data/entries` (checked out), not merged yet. 38 tests, typecheck and lint green.
-- **Resume with:** (1) Nipanko tests slice 3 on the phone (`npx expo start`, Expo Go) or says merge; (2) merge `data/entries` into main; (3) start slice 4.
-- **Slice 4 (proposed smaller, awaiting OK):** mark done / undo on a card; XP + level computed from entries in `src/core/game` (no `xp_events` table yet: add it when focus sessions, breaks or league need it); "skipped" derived (past + not done) and drawn as a grey gap; level/XP/streak header. Update ARCHITECTURE.md §5 when agreed.
+- **Where the code is:** `main` has scaffold + slices 1–3. Slice 4 is on branch `game/progress` (checked out), not merged. 44 tests, typecheck and lint green.
+- **Resume with:** Nipanko tries slice 4 (open a card → Mark done; watch the Level/XP/streak header; past unfinished tasks show as dashed gaps), then says merge; next slice 5 = focus mode + notifications.
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31
+- Slice 3 merged. Branch `game/progress` (slice 4, smaller version agreed): `core/game/xp.ts` (entry XP, planning-ahead bonus capped 10/day, level curve) and `core/game/streaks.ts` (forgiving streak with freezes), XP derived from entries (no `xp_events` table yet, ARCHITECTURE §5 updated). Mark done / not done in the entry sheet; missed tasks drawn as dashed gaps; Level/XP/streak header.
+- Fixed: the timeline's moving layer swallowed taps on web (pointerEvents style is dropped on Animated views; now set as a prop).
+- Not verified by me end to end in the browser (automated clicks didn't reach the app while Nipanko was testing in the pane); rules covered by tests.
+
 ### 2026-10-30 (8) — end of day
 - Day summary: from an idea to a working local timeline app. Docs (architecture, research, clay design, product decisions), interactive design canvas v0.2 (https://claude.ai/artifact/ABND6k1WXFuxPjKUE6JusJ), scaffold, slices 1–3.
 - Learned: test the timeline maths in a DST time zone; SQLite on web needs isolation headers and an async open; the React Compiler lint rejects `Date.now()` during render (use a state initializer or `useNow`); a 6-hour tick slot can contain a DST change.

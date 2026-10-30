@@ -78,7 +78,7 @@ All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a who
 | `layers` | `id`, `name`, `color`, `icon`, `sort`, `visible`, `createdAt`, `updatedAt` | A lane on the timeline (Work, Study, Health…). |
 | `entries` | `id`, `layerId`, `goalId?` (a milestone's parent goal), `kind` (`task` \| `todo` \| `note` \| `reminder` \| `milestone`), `title`, `body?`, `startAt`, `endAt?`, `granularity` (`moment` \| `day` \| `week` \| `month` \| `year`), `tz`, `status` (`planned` \| `done` \| `cancelled`), `doneAt?`, `remindOffsetsMin` (JSON int[]), `treat?`, `createdAt`, `updatedAt` | Tasks have `endAt` (a time block). Todos, notes and reminders are points (`endAt` null). A month goal = task with `granularity: month`, start/end at month edges. |
 | `focus_sessions` | `id`, `entryId`, `startedAt`, `endedAt?`, `pausedMs`, `outcome?` (`done` \| `stopped`) | Actual time for planned-vs-actual. |
-| `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | Append-only ledger. Level and totals are sums. Undo = delete the row. |
+| `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | **Not built yet.** Added when rewards come from things that aren't entries (focus sessions, breaks, reviews, league). Until then XP is derived (§5). |
 | `day_logs` | `day` (local `YYYY-MM-DD`), `reviewedAt?`, `freezeUsed` | Streak and review bookkeeping. |
 | `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | Badge rules live in code (`core/game/badges.ts`); we store only *when* each was earned, so the celebration plays exactly once (`seenAt`). |
 
@@ -149,7 +149,7 @@ Down (phone default), up, right (landscape, tablet, web) and left are one projec
 
 ## 5. Game core (`src/core/game`)
 
-Event-sourced: every reward is an `xp_events` row. Un-completing a task deletes its row, stats are sums, and sync later is append-only.
+XP is **derived from entries** (`core/game/xp.ts`), never stored: un-completing a task removes its XP automatically. When focus sessions, breaks, reviews or the league add rewards that aren't entries, move to the `xp_events` ledger (§3). Streaks are derived too (`core/game/streaks.ts`); a day counts when a task or todo planned for it is done.
 
 Starting values (constants in code, locked by tests, tuned from real use):
 

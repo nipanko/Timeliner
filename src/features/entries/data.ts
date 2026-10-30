@@ -10,7 +10,7 @@ import { entries, layers } from '@/db/schema';
 import { LAYER_COLORS, type LayerColor } from '@/ui/theme';
 
 export type Layer = { id: string; name: string; color: LayerColor; visible: boolean };
-export type Entry = TimelineEntry & { kind: EntryKind; title: string; granularity: Granularity; done: boolean };
+export type Entry = TimelineEntry & { kind: EntryKind; title: string; granularity: Granularity; done: boolean; createdAt: number };
 export type EntryDraft = Pick<Entry, 'layerId' | 'kind' | 'title' | 'start' | 'end' | 'granularity'>;
 
 type EntryRow = typeof entries.$inferSelect;
@@ -23,6 +23,7 @@ const toEntry = (r: EntryRow): Entry => ({
   end: r.endAt,
   granularity: r.granularity,
   done: r.status === 'done',
+  createdAt: r.createdAt,
 });
 
 export function useLayers(): Layer[] {
@@ -50,6 +51,10 @@ export async function saveEntry(id: string | null, draft: EntryDraft) {
   const row = { layerId: draft.layerId, kind: draft.kind, title: draft.title, startAt: draft.start, endAt: draft.end, granularity: draft.granularity, updatedAt: now };
   if (id) await getDb().update(entries).set(row).where(eq(entries.id, id));
   else await getDb().insert(entries).values({ ...row, id: randomUUID(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, createdAt: now });
+}
+
+export async function setDone(id: string, done: boolean) {
+  await getDb().update(entries).set({ status: done ? 'done' : 'planned', updatedAt: Date.now() }).where(eq(entries.id, id));
 }
 
 export async function deleteEntry(id: string) {
