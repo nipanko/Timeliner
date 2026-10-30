@@ -18,11 +18,11 @@ import { floorUnit } from '@/core/time/units';
 import { layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
 import type { Scale } from '@/core/timeline/scales';
 import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
-import { isVertical, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
+import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
+import type { Entry, Layer } from '@/features/entries/data';
 import { useNow } from '@/hooks/useNow';
 import { usePalette, type Palette } from '@/ui/theme';
 
-import type { Entry, Layer } from './sampleData';
 
 const ANCHOR = 0.3; // where "now" sits along the axis, measured from the past end
 const BUFFER = 1; // screens laid out beyond each edge
@@ -33,9 +33,18 @@ const clockFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '
 /** The camera outlives a zoom change (TimelineView remounts per zoom), so the screen owns it. */
 export type Camera = { anchorTime: SharedValue<number>; following: SharedValue<boolean> };
 
-type Props = { entries: readonly Entry[]; layers: readonly Layer[]; scale: Scale; direction: Direction; camera: Camera };
+type Props = {
+  entries: readonly Entry[];
+  layers: readonly Layer[];
+  scale: Scale;
+  direction: Direction;
+  camera: Camera;
+  /** Tap on empty space: a time (snapped to the zoom) and the lane's layer. */
+  onAdd: (at: number, layerId: string) => void;
+  onOpen: (entryId: string) => void;
+};
 
-export function TimelineView({ entries, layers, scale, direction, camera }: Props) {
+export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
@@ -101,6 +110,12 @@ export function TimelineView({ entries, layers, scale, direction, camera }: Prop
     );
   };
 
+  const tapEmpty = (x: number, y: number) => {
+    const at = posToTime((vertical ? y : x) / L, { anchorTime: anchorTime.get(), anchorFrac: ANCHOR, span, direction });
+    const lane = layers[Math.min(layers.length - 1, Math.max(0, Math.floor(((vertical ? x : y) - GUT) / laneW)))];
+    if (lane) onAdd(floorUnit(at, scale.snap.unit, scale.snap.step), lane.id);
+  };
+
   const along = (d: number) => {
     'worklet';
     return vertical ? [{ translateY: d }] : [{ translateX: d }];
@@ -163,30 +178,31 @@ export function TimelineView({ entries, layers, scale, direction, camera }: Prop
 
           <GestureDetector gesture={pan}>
             <View style={[styles.abs, body, styles.clip]} accessibilityLabel="Timeline. Drag to move through time.">
-              <Animated.View entering={FadeIn.duration(250)} style={[styles.abs, styles.fill, contentStyle]}>
+              <Pressable accessible={false} onPress={(e) => tapEmpty(e.nativeEvent.locationX, e.nativeEvent.locationY)} style={[styles.abs, styles.fill]} />
+              <Animated.View entering={FadeIn.duration(250)} style={[styles.abs, styles.fill, styles.passThrough, contentStyle]}>
                 {laid.majors.map((m) => (
-                  <View key={`l${m.t}`} style={[styles.abs, place(m.at, 1, GUT, C), { backgroundColor: c.line }]} />
+                  <View key={`l${m.t}`} style={[styles.abs, styles.noTouch, place(m.at, 1, GUT, C), { backgroundColor: c.line }]} />
                 ))}
                 {laid.minors.map((m) => (
-                  <View key={`m${m.t}`} style={[styles.abs, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
+                  <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
                 ))}
                 {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} />
+                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} />
                 ))}
                 {laid.majors.filter((m) => m.label).map((m) => (
                   <Text
                     key={`t${m.t}`}
                     numberOfLines={1}
-                    style={[styles.abs, styles.tick, { color: c.muted }, vertical ? [place(m.at - 8, 16, 0, GUT - 8), styles.tickV] : [place(m.at - 48, 96, 0, GUT), styles.tickH, { lineHeight: GUT }]]}
+                    style={[styles.abs, styles.noTouch, styles.tick, { color: c.muted }, vertical ? [place(m.at - 8, 16, 0, GUT - 8), styles.tickV] : [place(m.at - 48, 96, 0, GUT), styles.tickH, { lineHeight: GUT }]]}
                   >
                     {m.label}
                   </Text>
                 ))}
               </Animated.View>
 
-              <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, { backgroundColor: c.veil }, veilStyle]} />
+              <Animated.View style={[styles.abs, styles.fill, styles.noTouch, { backgroundColor: c.veil }, veilStyle]} />
 
-              <Animated.View pointerEvents="none" style={[styles.abs, zeroAlong, styles.visible, nowStyle]}>
+              <Animated.View style={[styles.abs, zeroAlong, styles.visible, styles.noTouch, nowStyle]}>
                 <View style={[styles.abs, vertical ? { top: -1.5, height: 3, left: GUT - 4, right: 0 } : { left: -1.5, width: 3, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accent }]} />
                 <View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accent }]}>
                   <ClockText color={c.accentInk} />
@@ -228,14 +244,15 @@ type ItemProps = {
   place: (at: number, len: number, cross: number, crossLen: number) => ViewStyle;
   laneStart: number;
   laneW: number;
+  onOpen: (entryId: string) => void;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW }: ItemProps) {
+function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen }: ItemProps) {
   const { entry, shape } = it;
   const sub = laneW / it.columns;
   const start = laneStart + it.column * sub;
   if (shape === 'band') {
-    return <View style={[styles.abs, place(it.at, it.len, laneStart + 1, 4), { backgroundColor: layer.color.strong, opacity: 0.45, borderRadius: 2 }]} />;
+    return <View style={[styles.abs, styles.noTouch, place(it.at, it.len, laneStart + 1, 4), { backgroundColor: layer.color.strong, opacity: 0.45, borderRadius: 2 }]} />;
   }
   const flatPill = !vertical && shape === 'pill';
   const frame = place(it.at, it.len, flatPill ? start + (sub - 30) / 2 : start + 4, flatPill ? 30 : sub - 8);
@@ -243,11 +260,11 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW }: ItemProps) {
   const look = { backgroundColor: layer.color.fill, opacity: entry.done ? 0.55 : 1 };
 
   if (shape === 'compact' || shape === 'dot') {
-    return <View accessibilityLabel={label} style={[styles.abs, frame, look, { borderRadius: 4 }]} />;
+    return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, { borderRadius: 4 }]} />;
   }
-  const showTime = shape === 'card' && it.len > (vertical ? 48 : 110);
+  const showTime = shape === 'card' && entry.granularity === 'moment' && it.len > (vertical ? 48 : 110);
   return (
-    <View accessibilityLabel={label} style={[styles.abs, frame, look, shape === 'card' ? styles.card : styles.pillItem, { boxShadow: c.raisedSm }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, shape === 'card' ? styles.card : styles.pillItem, { boxShadow: c.raisedSm }]}>
       <View style={styles.row}>
         {entry.kind !== 'task' && <View style={[styles.kindMark, kindMarks[entry.kind], { borderColor: layer.color.ink, backgroundColor: entry.kind === 'note' ? layer.color.ink : 'transparent' }]} />}
         <Text numberOfLines={1} style={[styles.itemTitle, { color: layer.color.ink }, entry.done && entry.kind === 'todo' && styles.struck]}>
@@ -259,7 +276,7 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW }: ItemProps) {
           {timeFmt.format(entry.start)}–{timeFmt.format(entry.end)}
         </Text>
       )}
-    </View>
+    </Pressable>
   );
 }
 
@@ -280,6 +297,8 @@ const styles = StyleSheet.create({
   fill: { top: 0, left: 0, right: 0, bottom: 0 },
   clip: { overflow: 'hidden' },
   visible: { overflow: 'visible' },
+  noTouch: { pointerEvents: 'none' },
+  passThrough: { pointerEvents: 'box-none' },
   tick: { fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
   tickV: { textAlign: 'right', lineHeight: 16 },
   tickH: { textAlign: 'center' },
