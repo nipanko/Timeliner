@@ -4,14 +4,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–3. Slice 4 is on branch `game/progress` (checked out), not merged. 44 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries slice 4 (open a card → Mark done; watch the Level/XP/streak header; past unfinished tasks show as dashed gaps), then says merge; next slice 5 = focus mode + notifications.
+- **Where the code is:** `main` has scaffold + slices 1–4. Slice 5 is on branch `focus/notifications` (checked out), not merged. 46 tests, typecheck and lint green.
+- **Resume with:** Nipanko tries slice 5 on the phone (notifications only work there), then says merge; next slice 6 = Review + streak details (end-of-day run summary).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (2)
+- Slice 4 merged. Branch `focus/notifications` (slice 5): `focus_sessions` table; Focus screen (`/focus/[id]`, from "Focus on this" in the sheet): countdown of the planned length, pause/resume, stop, done; time derived from timestamps so reloads/locks don't break it. Calibration +5 XP when focused time is within 20 % of plan. Local notifications (expo-notifications): reminders and task starts for the next 48 h, refreshed when entries change; focus-end alert; none on web.
+- Checked on the web build: start, countdown, done → task done, XP 28 and 1-day streak in the header. Notifications not tested (phone only).
+- Left out (name for later): park-a-thought / Inbox lane, break suggestion, ring dial (needs react-native-svg).
+
 ### 2026-10-31
 - Slice 3 merged. Branch `game/progress` (slice 4, smaller version agreed): `core/game/xp.ts` (entry XP, planning-ahead bonus capped 10/day, level curve) and `core/game/streaks.ts` (forgiving streak with freezes), XP derived from entries (no `xp_events` table yet, ARCHITECTURE §5 updated). Mark done / not done in the entry sheet; missed tasks drawn as dashed gaps; Level/XP/streak header.
 - Fixed: the timeline's moving layer swallowed taps on web (pointerEvents style is dropped on Animated views; now set as a prop).

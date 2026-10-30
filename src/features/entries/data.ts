@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import type { EntryKind, Granularity } from '@/core/entries/timing';
 import type { TimelineEntry } from '@/core/timeline/layout';
 import { getDb } from '@/db/client';
-import { entries, layers } from '@/db/schema';
+import { entries, focusSessions, layers } from '@/db/schema';
 import { LAYER_COLORS, type LayerColor } from '@/ui/theme';
 
 export type Layer = { id: string; name: string; color: LayerColor; visible: boolean };
@@ -58,6 +58,8 @@ export async function setDone(id: string, done: boolean) {
 }
 
 export async function deleteEntry(id: string) {
+  // SQLite only cascades with foreign keys switched on, so remove the sessions explicitly.
+  await getDb().delete(focusSessions).where(eq(focusSessions.entryId, id));
   await getDb().delete(entries).where(eq(entries.id, id));
 }
 

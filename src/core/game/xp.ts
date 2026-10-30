@@ -4,17 +4,21 @@ import { floorUnit, HOUR, MINUTE } from '../time/units';
 // Rules and their research basis: ARCHITECTURE.md §5, RESEARCH.md.
 // XP is derived from entries, never stored, so undoing a task removes its XP automatically.
 
-export type ScoredEntry = { kind: EntryKind; start: number; end: number | null; done: boolean; createdAt: number };
+/** `focusedMs`: total time from focus sessions on this entry, if any. */
+export type ScoredEntry = { kind: EntryKind; start: number; end: number | null; done: boolean; createdAt: number; focusedMs?: number };
 
 const DONE_XP: Record<EntryKind, number> = { task: 10, todo: 5, reminder: 2, note: 1 };
 const PLAN_AHEAD_XP = 2;
 const PLAN_AHEAD_MAX_PER_DAY = 10;
+const CALIBRATION_XP = 5;
 
-/** XP for finishing one entry: tasks earn 10 + 1 per 5 planned minutes (max +20). */
+/** XP for finishing one entry: tasks earn 10 + 1 per 5 planned minutes (max +20), +5 when focused time was within 20 % of plan. */
 export function entryXp(e: ScoredEntry): number {
   if (!e.done) return 0;
   if (e.kind !== 'task' || e.end === null) return DONE_XP[e.kind];
-  return DONE_XP.task + Math.min(20, Math.floor((e.end - e.start) / (5 * MINUTE)));
+  const planned = e.end - e.start;
+  const calibrated = !!e.focusedMs && Math.abs(e.focusedMs - planned) <= planned * 0.2;
+  return DONE_XP.task + Math.min(20, Math.floor(planned / (5 * MINUTE))) + (calibrated ? CALIBRATION_XP : 0);
 }
 
 /** All XP: finished entries, plus +2 for each entry planned ≥ 1 h ahead (at most 10 a day, so planning can't be farmed). */

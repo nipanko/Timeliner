@@ -1,5 +1,6 @@
 import { DAY, HOUR, MINUTE } from '../time/units';
 import { entryXp, levelFor, totalXp, type ScoredEntry } from './xp';
+import { focusedMs } from './focus';
 import { streak } from './streaks';
 
 const local = (y: number, mo: number, d: number, h = 0) => new Date(y, mo - 1, d, h).getTime();
@@ -12,6 +13,11 @@ describe('xp', () => {
     expect(entryXp(task(600))).toBe(30);
     expect(entryXp(task(25, false))).toBe(0);
     expect(entryXp({ kind: 'todo', start: now, end: null, done: true, createdAt: now })).toBe(5);
+  });
+
+  it('adds a calibration bonus when focused time matched the plan', () => {
+    expect(entryXp({ ...task(25), focusedMs: 28 * MINUTE })).toBe(20);
+    expect(entryXp({ ...task(25), focusedMs: 40 * MINUTE })).toBe(15);
   });
 
   it('adds planning-ahead XP, capped per day', () => {
@@ -44,5 +50,14 @@ describe('streak', () => {
     const week = [9, 8, 7, 6, 5, 4, 3].map(day); // 7 days in a row, then day 2 missed
     expect(streak([...week, day(1)], now)).toEqual({ days: 8, freezes: 0 });
     expect(streak(week, now - 2 * DAY + HOUR).freezes).toBe(1);
+  });
+});
+
+describe('focusedMs', () => {
+  const start = now - 30 * MINUTE;
+  it('excludes finished and running pauses', () => {
+    expect(focusedMs({ startedAt: start, endedAt: null, pausedMs: 5 * MINUTE, pausedAt: null }, now)).toBe(25 * MINUTE);
+    expect(focusedMs({ startedAt: start, endedAt: null, pausedMs: 0, pausedAt: now - 10 * MINUTE }, now)).toBe(20 * MINUTE);
+    expect(focusedMs({ startedAt: start, endedAt: now - 10 * MINUTE, pausedMs: 0, pausedAt: null }, now)).toBe(20 * MINUTE);
   });
 });

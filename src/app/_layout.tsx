@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { openDb, type Db } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
+import { setupNotifications } from '@/lib/notifications';
 
 export default function RootLayout() {
   const [db, setDb] = useState<Db | null>(null);
@@ -20,6 +21,9 @@ export default function RootLayout() {
 
 function MigratedApp({ db }: { db: Db }) {
   const { success, error } = useMigrations(db, migrations);
+  useEffect(() => {
+    setupNotifications();
+  }, []);
   if (error) return <DataError error={error} />;
   if (!success) return null;
   return (
@@ -28,6 +32,7 @@ function MigratedApp({ db }: { db: Db }) {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="entry/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="focus/[id]" />
       </Stack>
     </GestureHandlerRootView>
   );

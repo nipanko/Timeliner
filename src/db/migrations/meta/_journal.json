@@ -15,6 +15,13 @@
       "when": 1793358327466,
       "tag": "0001_seed-layers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793381719357,
+      "tag": "0002_focus-sessions",
+      "breakpoints": true
     }
   ]
 }

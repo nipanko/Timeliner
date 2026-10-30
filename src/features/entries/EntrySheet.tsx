@@ -176,6 +176,11 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
         </View>
       </ScrollView>
 
+      {id && form.kind === 'task' && granularity === 'moment' && !done && (
+        <Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/focus/[id]', params: { id } })} style={[styles.doneButton, { backgroundColor: c.chip, boxShadow: c.raisedSm }]}>
+          <Text style={[styles.saveText, { color: c.ink }]}>Focus on this</Text>
+        </Pressable>
+      )}
       {id && (
         <Pressable accessibilityRole="button" onPress={toggleDone} style={[styles.doneButton, { backgroundColor: c.chip, boxShadow: c.raisedSm }]}>
           <Text style={[styles.saveText, { color: c.ink }]}>{done ? 'Mark not done' : 'Mark done'}</Text>

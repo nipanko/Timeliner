@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ import { addUnit, floorUnit } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
+import { useFocusedByEntry } from '@/features/focus/data';
+import { syncEntryNotifications } from '@/lib/notifications';
 import { useNow } from '@/hooks/useNow';
 import { usePalette } from '@/ui/theme';
 
@@ -34,7 +36,11 @@ export function TimelineScreen() {
   const layers = allLayers.filter((l) => l.visible);
   const scale = getScale(scaleId);
   const hour = new Date(now).getHours();
-  const lv = levelFor(totalXp(entries));
+  const focused = useFocusedByEntry(now);
+  const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))));
+  useEffect(() => {
+    syncEntryNotifications(entries, Date.now());
+  }, [entries]);
   const run = streak(entries.filter((e) => e.done && (e.kind === 'task' || e.kind === 'todo')).map((e) => e.start), now);
 
   const toggleLayer = (id: string, visible: boolean) => {

@@ -31,3 +31,15 @@ export const entries = sqliteTable('entries', {
   createdAt: integer().notNull(),
   updatedAt: integer().notNull(),
 });
+
+/** One run of focus on a task; actual time feeds the calibration bonus (RESEARCH.md #2). */
+export const focusSessions = sqliteTable('focus_sessions', {
+  id: text().primaryKey(),
+  entryId: text()
+    .notNull()
+    .references(() => entries.id, { onDelete: 'cascade' }),
+  startedAt: integer().notNull(),
+  endedAt: integer(),
+  pausedMs: integer().notNull().default(0),
+  pausedAt: integer(),
+});
