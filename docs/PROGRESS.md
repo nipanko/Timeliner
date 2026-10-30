@@ -3,12 +3,18 @@
 Claude reads this first in every session and updates it at the end. Newest entry on top.
 
 ## Now
-- **Phase:** 0, concept & validation
-- **Current task:** Nipanko reviews the clay UI v0.2 canvas (Journey, League, web dashboard, animations)
-- **Next:** confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
+- **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
+- **Current task:** Nipanko reviews branches `scaffold` and `core/time-timeline` (stacked) before they merge to main
+- **Next:** slice 2 = read-only Timeline screen (ticks, now-line, zoom bar, directions, sample data) on Reanimated + Gesture Handler; confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-30 (5)
+- Design docs fast-forwarded into main.
+- Branch `scaffold`: Expo SDK 58 app (Router with src/app, placeholder home), jest-expo, ESLint flat config, typecheck/test scripts, static web output. Web export builds.
+- Branch `core/time-timeline` (slice 1): `src/core/time` (units, periods) and `src/core/timeline` (scales, viewport, ticks, layout), 30 Jest tests in a DST time zone; IST checked by hand. Fixed a DST bug in 6-hour slots found while writing ticks.
+- Gotchas: npm 11 ignores `--dev` (use `--save-dev`); TypeScript 6 needs `"types": ["jest"]` in tsconfig.
+
 ### 2026-10-30 (4)
 - Decided: minimum age 13; 13–17 with verifiable parental consent, no social features or analytics. Recorded in PRODUCT.md, PLAN.md §5, ARCHITECTURE.md §12.
 
