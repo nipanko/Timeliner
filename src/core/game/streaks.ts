@@ -13,18 +13,27 @@ export function streak(doneDays: readonly number[], now: number) {
   const today = floorUnit(now, 'day');
   let count = 0;
   let freezes = 0;
-  if (!days.size) return { days: 0, freezes: 0 };
+  let best = 0;
+  let comebacks = 0; // days the streak restarted after breaking (RESEARCH.md #10)
+  let broken = false;
+  if (!days.size) return { days: 0, freezes: 0, best: 0, comebacks: 0 };
   for (let d = Math.min(...days); d <= today; d = addUnit(d, 'day', 1)) {
     if (days.has(d)) {
       count += 1;
+      best = Math.max(best, count);
+      if (broken) {
+        comebacks += 1;
+        broken = false;
+      }
       if (count % FREEZE_EVERY === 0) freezes = Math.min(MAX_FREEZES, freezes + 1);
     } else if (d === today) {
       break;
     } else if (freezes > 0) {
       freezes -= 1;
     } else {
+      broken ||= count > 0;
       count = 0;
     }
   }
-  return { days: count, freezes };
+  return { days: count, freezes, best, comebacks };
 }

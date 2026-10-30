@@ -13,14 +13,22 @@ const PLAN_AHEAD_MAX_PER_DAY = 10;
 const CALIBRATION_XP = 5;
 /** Earned once per day closed in Review (RESEARCH.md #6, #19). */
 export const REVIEW_XP = 5;
+/** Earned per milestone reached on a goal (RESEARCH.md #21). */
+export const MILESTONE_XP = 50;
 
 /** XP for finishing one entry: tasks earn 10 + 1 per 5 planned minutes (max +20), +5 when focused time was within 20 % of plan. */
 export function entryXp(e: ScoredEntry): number {
   if (!e.done) return 0;
   if (e.kind !== 'task' || e.end === null) return DONE_XP[e.kind];
   const planned = e.end - e.start;
-  const calibrated = !!e.focusedMs && Math.abs(e.focusedMs - planned) <= planned * 0.2;
-  return DONE_XP.task + Math.min(20, Math.floor(planned / (5 * MINUTE))) + (calibrated ? CALIBRATION_XP : 0);
+  return DONE_XP.task + Math.min(20, Math.floor(planned / (5 * MINUTE))) + (isCalibrated(e) ? CALIBRATION_XP : 0);
+}
+
+/** A finished task whose focused time was within 20 % of its plan. */
+export function isCalibrated(e: ScoredEntry): boolean {
+  if (!e.done || e.kind !== 'task' || e.end === null || !e.focusedMs) return false;
+  const planned = e.end - e.start;
+  return Math.abs(e.focusedMs - planned) <= planned * 0.2;
 }
 
 /** All XP: finished entries, plus +2 for each entry planned ≥ 1 h ahead (at most 10 a day, so planning can't be farmed). */

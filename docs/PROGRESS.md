@@ -4,14 +4,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–5. Slice 6 is on branch `review/day` (checked out), not merged. 50 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries the Review (tap the Day/Week/Month/Year bars), then says merge; next slice 7 = Journey (goals, milestones, badges).
+- **Where the code is:** `main` has scaffold + slices 1–6. Slice 7 is on branch `journey/goals` (checked out), not merged. 53 tests, typecheck and lint green.
+- **Resume with:** Nipanko tries Journey (tap the level header), then says merge; next slice 8 = layer management + settings (rename/recolor/add layers, direction, week start, calm mode). After that, slice 9 = motion polish (fonts, icons, mascot, celebrations).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (4)
+- Slice 6 merged. Branch `journey/goals` (slice 7): `milestones` table (separate from entries: not on the timeline); `core/game/badges.ts` (11 badges from streak best, comebacks, focus hours, honest planning, early tasks, fresh starts; all derived); streak now also returns best + comebacks. Journey screen (`/journey`, from the level header): goals (month/year tasks) as branches with milestone stops (add, reach, remove), "+ New goal"; Badges tab with progress. Milestone reached = +50 XP in the header.
+- Checked on the web build: create goal, add 2 milestones, reach one (1 of 2, bar), badges with progress, header XP up by 50.
+- Left out: git-style multi-branch graph drawing (needs react-native-svg), WOOP fields on goals, unlock celebrations (`badges_unlocked` comes with motion polish), Party badge (Phase 2).
+
 ### 2026-10-31 (3)
 - Slice 5 merged. Branch `review/day` (slice 6): `core/game/review.ts` summarizeDay (path done/missed/open, focus, XP today, plan vs actual over focused tasks, best moment); `day_logs` table; Review screen (`/review`, from the period bars): tiles, path with neutral gaps + "Tomorrow" for missed items, plan vs actual hint, tomorrow's first task at 9 AM, best moment last, "Close the day" +5 XP (counted in the header).
 - Fixed: stray seconds of focus no longer count (gave "100% faster"); serve-web.js no longer crashes while `dist/` is rebuilt.

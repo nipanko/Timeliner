@@ -49,3 +49,15 @@ export const dayLogs = sqliteTable('day_logs', {
   day: integer().primaryKey(),
   reviewedAt: integer().notNull(),
 });
+
+/** Stops on a goal's branch (Journey). A goal is a task covering a month or a year. */
+export const milestones = sqliteTable('milestones', {
+  id: text().primaryKey(),
+  goalId: text()
+    .notNull()
+    .references(() => entries.id, { onDelete: 'cascade' }),
+  title: text().notNull(),
+  sort: integer().notNull(),
+  doneAt: integer(),
+  createdAt: integer().notNull(),
+});

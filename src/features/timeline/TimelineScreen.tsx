@@ -5,13 +5,14 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { streak } from '@/core/game/streaks';
-import { levelFor, REVIEW_XP, totalXp } from '@/core/game/xp';
+import { levelFor, MILESTONE_XP, REVIEW_XP, totalXp } from '@/core/game/xp';
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, floorUnit } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
+import { useMilestones } from '@/features/journey/data';
 import { useReviewedDays } from '@/features/review/data';
 import { syncEntryNotifications } from '@/lib/notifications';
 import { useNow } from '@/hooks/useNow';
@@ -39,7 +40,8 @@ export function TimelineScreen() {
   const hour = new Date(now).getHours();
   const focused = useFocusedByEntry(now);
   const reviewed = useReviewedDays();
-  const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))) + REVIEW_XP * reviewed.length);
+  const reachedMilestones = useMilestones().filter((m) => m.doneAt !== null).length;
+  const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))) + REVIEW_XP * reviewed.length + MILESTONE_XP * reachedMilestones);
   useEffect(() => {
     syncEntryNotifications(entries, Date.now());
   }, [entries]);
@@ -61,7 +63,7 @@ export function TimelineScreen() {
           <Text style={[styles.date, { color: c.ink }]}>{new Date(now).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
         </View>
 
-        <View style={[styles.panel, styles.hud, { backgroundColor: c.panel, boxShadow: c.raised }]} accessible accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes`}>
+        <Pressable onPress={() => router.push('/journey')} accessibilityRole="button" style={[styles.panel, styles.hud, { backgroundColor: c.panel, boxShadow: c.raised }]} accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes. Open your journey`}>
           <View style={[styles.levelBadge, { backgroundColor: c.accent }]}>
             <Text style={[styles.levelText, { color: c.accentInk }]}>{lv.level}</Text>
           </View>
@@ -75,7 +77,7 @@ export function TimelineScreen() {
             </View>
           </View>
           <Text style={[styles.streak, { color: c.ink }]}>{run.days}d streak{run.freezes ? ` · ${run.freezes} freeze${run.freezes > 1 ? 's' : ''}` : ''}</Text>
-        </View>
+        </Pressable>
 
         <Pressable accessibilityRole="button" accessibilityLabel="Open today's review" onPress={() => router.push('/review')} style={[styles.panel, styles.periods, { backgroundColor: c.panel, boxShadow: c.raised }]}>
           {PERIODS.map(([label, period]) => {

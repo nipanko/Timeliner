@@ -37,18 +37,18 @@ describe('streak', () => {
   const day = (n: number) => local(2026, 10, 30 - n, 10);
 
   it('counts days in a row and ignores an unfinished today', () => {
-    expect(streak([day(1), day(2), day(3)], now)).toEqual({ days: 3, freezes: 0 });
+    expect(streak([day(1), day(2), day(3)], now)).toMatchObject({ days: 3, freezes: 0 });
     expect(streak([day(0), day(1)], now).days).toBe(2);
     expect(streak([], now).days).toBe(0);
   });
 
-  it('resets after a missed day without a freeze', () => {
-    expect(streak([day(1), day(3), day(4)], now).days).toBe(1);
+  it('resets after a missed day without a freeze, and counts the comeback', () => {
+    expect(streak([day(1), day(3), day(4)], now)).toEqual({ days: 1, freezes: 0, best: 2, comebacks: 1 });
   });
 
   it('uses a freeze earned after 7 days instead of resetting', () => {
     const week = [9, 8, 7, 6, 5, 4, 3].map(day); // 7 days in a row, then day 2 missed
-    expect(streak([...week, day(1)], now)).toEqual({ days: 8, freezes: 0 });
+    expect(streak([...week, day(1)], now)).toMatchObject({ days: 8, freezes: 0 });
     expect(streak(week, now - 2 * DAY + HOUR).freezes).toBe(1);
   });
 });

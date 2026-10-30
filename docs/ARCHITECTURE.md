@@ -76,13 +76,13 @@ All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a who
 | Table | Columns | Notes |
 |---|---|---|
 | `layers` | `id`, `name`, `color`, `icon`, `sort`, `visible`, `createdAt`, `updatedAt` | A lane on the timeline (Work, Study, Health…). |
-| `entries` | `id`, `layerId`, `goalId?` (a milestone's parent goal), `kind` (`task` \| `todo` \| `note` \| `reminder` \| `milestone`), `title`, `body?`, `startAt`, `endAt?`, `granularity` (`moment` \| `day` \| `week` \| `month` \| `year`), `tz`, `status` (`planned` \| `done` \| `cancelled`), `doneAt?`, `remindOffsetsMin` (JSON int[]), `treat?`, `createdAt`, `updatedAt` | Tasks have `endAt` (a time block). Todos, notes and reminders are points (`endAt` null). A month goal = task with `granularity: month`, start/end at month edges. |
+| `entries` | `id`, `layerId`, `kind` (`task` \| `todo` \| `note` \| `reminder`), `title`, `body?`, `startAt`, `endAt?`, `granularity` (`moment` \| `day` \| `week` \| `month` \| `year`), `tz`, `status` (`planned` \| `done` \| `cancelled`), `doneAt?`, `remindOffsetsMin` (JSON int[]), `treat?`, `createdAt`, `updatedAt` | Tasks have `endAt` (a time block). Todos, notes and reminders are points (`endAt` null). A month goal = task with `granularity: month`, start/end at month edges. |
 | `focus_sessions` | `id`, `entryId`, `startedAt`, `endedAt?`, `pausedMs`, `outcome?` (`done` \| `stopped`) | Actual time for planned-vs-actual. |
 | `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | **Not built yet.** Added when rewards come from things that aren't entries (focus sessions, breaks, reviews, league). Until then XP is derived (§5). |
 | `day_logs` | `day` (local `YYYY-MM-DD`), `reviewedAt?`, `freezeUsed` | Streak and review bookkeeping. |
-| `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | Badge rules live in code (`core/game/badges.ts`); we store only *when* each was earned, so the celebration plays exactly once (`seenAt`). |
+| `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | **Not built yet.** Badges are derived from entries (`core/game/badges.ts`). Add this table with the celebration animations, so each unlock plays exactly once. |
 
-A **goal** is a long task (`granularity` month or year). Its **milestones** are `kind: milestone` entries with `goalId` set; on the Journey screen the goal is a branch and the milestones are its stops. The goal "merges back" when it is done.
+A **goal** is a long task (`granularity` month or year). Its **milestones** live in their own `milestones` table (`id`, `goalId`, `title`, `sort`, `doneAt?`, `createdAt`), since they are not on the timeline; on the Journey screen the goal is a branch and the milestones are its stops. Each reached milestone earns 50 XP.
 
 - **IDs are UUID strings** (`expo-crypto` `randomUUID`), so rows made offline on two devices can merge when sync arrives in Phase 2.
 - **Index** `entries(startAt)` and `entries(layerId, startAt)`.
