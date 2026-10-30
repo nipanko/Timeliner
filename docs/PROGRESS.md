@@ -12,7 +12,7 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ### 2026-10-30 (7)
 - Slice 2 merged into main.
 - Branch `data/entries` (slice 3): expo-sqlite + Drizzle (layers, entries; migrations in `src/db/migrations`, starter layers seeded by a migration). Tap empty timeline → add sheet (kind, title, when with ‹ › and Time/Day/Week/Month/Year, length, layer, plan sentence); tap a card → edit / delete (two taps); + button adds at the next slot; layer visibility saved. Sample data removed.
-- Core: `entries/timing.ts` (entryTiming, nudge, default granularity per zoom); 40 tests.
+- Core: `entries/timing.ts` (entryTiming, nudge, default granularity per zoom); 38 tests.
 - Web: output is now a single-page app; SQLite on web needs cross-origin isolation headers (`public/_headers`). `npm run web` can't send them, so use `npm run web:preview` (export + local server with headers). DB is opened async (web worker can't start during a synchronous open).
 - Checked on the web build: add, live update, edit, move a day, delete, layer toggles persist. Not yet run on a phone.
 
