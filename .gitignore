@@ -10,3 +10,5 @@ web-build/
 *.p12
 *.mobileprovision
 .DS_Store
+expo-env.d.ts
+coverage/
