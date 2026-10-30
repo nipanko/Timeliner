@@ -1,4 +1,15 @@
-# TIMELINER — UI design v0.2 ("clay")
+# TIMELINER — UI design v0.3 ("pro")
+
+> **v0.3 (31 Oct) replaces the clay look in the app.** Inspired by pill timelines, week strips, watch complications and clean card UIs: dark near-black with hairline edges and a glowing coral accent (gamers / tech), light warm paper with white cards. Tokens live in `src/ui/theme.ts`:
+> - Dark: ground `#0D0E12`, panel `#17181E`, ink `#F2F3F5`, muted `#9A9CA6`, accent `#FF7A6B` (dark text on it), glow `0 0 12px` accent.
+> - Light: ground `#ECE9E3`, panel `#FFFFFF`, ink `#15161A`, muted `#62656F`, accent `#C93C31` (white text).
+> - Edges are inset 1 px shadows in the elevation tokens, so one `boxShadow` gives border + depth.
+> - Layer colors: Work `#F5C542`, Study `#7C9CF5`, Health `#6CC070`, Life `#F28A8A`, all with dark text.
+> - Type: system font (SF / Roboto), weights 600–700 only, tabular numbers, small caps-style labels with letter spacing.
+> - Timeline screen: month title with the year in accent · level chip (glowing XP bar, streak) · week strip with entry dots (tap a day to jump) · Day/Week/Month/Year as 10-segment complications · segmented zoom · outline layer chips · cards with a quick-complete ring · floating tab bar (Timeline, Journey, Review) + coral add button.
+> The design canvas below still shows v0.2 clay; the sections after this note describe v0.2 and remain the reference for motion and screen content.
+
+# v0.2 ("clay")
 
 **Interactive canvas:** https://claude.ai/artifact/ABND6k1WXFuxPjKUE6JusJ (private; press Play on a board to use it).
 Boards: Timeline (vertical, live) · Night · Add · Focus · Review · Journey (milestones + badges) · League (leaderboard) · Horizontal · Web dashboard.

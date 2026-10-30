@@ -1,27 +1,27 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { streak } from '@/core/game/streaks';
 import { levelFor, MILESTONE_XP, REVIEW_XP, totalXp } from '@/core/game/xp';
 import { periodProgress, type Period } from '@/core/time/periods';
-import { addUnit, floorUnit } from '@/core/time/units';
+import { addUnit, floorUnit, HOUR } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
-import { setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
+import { setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
 import { useMilestones } from '@/features/journey/data';
 import { useReviewedDays } from '@/features/review/data';
-import { syncEntryNotifications } from '@/lib/notifications';
 import { useNow } from '@/hooks/useNow';
-import { usePalette } from '@/ui/theme';
+import { syncEntryNotifications } from '@/lib/notifications';
+import { usePalette, type Palette } from '@/ui/theme';
 
 import { TimelineView } from './TimelineView';
 
 const ZOOM_LABELS: Record<ScaleId, string> = { sec: 'Sec', min: 'Min', hour: 'Hour', day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
-const PERIODS: [string, Period][] = [['Day', 'day'], ['Week', 'week'], ['Month', 'month'], ['Year', 'year']];
+const PERIODS: [string, Period][] = [['DAY', 'day'], ['WEEK', 'week'], ['MONTH', 'month'], ['YEAR', 'year']];
 const NEXT_DIRECTION: Record<Direction, Direction> = { down: 'up', up: 'right', right: 'left', left: 'down' };
 const ARROW: Record<Direction, string> = { down: '↓', up: '↑', right: '→', left: '←' };
 
@@ -37,18 +37,36 @@ export function TimelineScreen() {
   const following = useSharedValue(true);
   const layers = allLayers.filter((l) => l.visible);
   const scale = getScale(scaleId);
-  const hour = new Date(now).getHours();
   const focused = useFocusedByEntry(now);
   const reviewed = useReviewedDays();
   const reachedMilestones = useMilestones().filter((m) => m.doneAt !== null).length;
   const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))) + REVIEW_XP * reviewed.length + MILESTONE_XP * reachedMilestones);
+  const run = streak(entries.filter((e) => e.done && (e.kind === 'task' || e.kind === 'todo')).map((e) => e.start), now);
   useEffect(() => {
     syncEntryNotifications(entries, Date.now());
   }, [entries]);
-  const run = streak(entries.filter((e) => e.done && (e.kind === 'task' || e.kind === 'todo')).map((e) => e.start), now);
+
+  const today = floorUnit(now, 'day');
+  const week = Array.from({ length: 7 }, (_, i) => addUnit(floorUnit(now, 'week'), 'day', i));
+  const colorById = new Map(allLayers.map((l) => [l.id, l.color.fill]));
+  const dotsFor = (day: number) => {
+    const next = addUnit(day, 'day', 1);
+    return [...new Set(entries.filter((e) => e.start >= day && e.start < next).map((e) => colorById.get(e.layerId) ?? c.muted))].slice(0, 4);
+  };
 
   const toggleLayer = (id: string, visible: boolean) => {
     if (!visible || layers.length > 1) setLayerVisible(id, !visible); // never hide the last visible layer
+  };
+  // Today goes back to the live clock; other days open at 9 AM.
+  const jumpTo = (day: number) => {
+    following.set(false);
+    const toToday = day === today;
+    anchorTime.set(
+      withTiming(toToday ? now : day + 9 * HOUR, { duration: 450 }, (finished) => {
+        'worklet';
+        if (finished && toToday) following.set(true);
+      }),
+    );
   };
   const openAdd = (at: number, layerId: string) =>
     router.push({ pathname: '/entry/[id]', params: { id: 'new', at: String(at), layer: layerId, scale: scaleId } });
@@ -56,47 +74,75 @@ export function TimelineScreen() {
   const addNow = () => openAdd(addUnit(floorUnit(Date.now(), scale.snap.unit, scale.snap.step), scale.snap.unit, scale.snap.step), layers[0]?.id ?? '');
 
   return (
-    <View style={[styles.screen, { backgroundColor: c.ground, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 10 }]}>
+    <View style={[styles.screen, { backgroundColor: c.ground, paddingTop: insets.top + 6, paddingBottom: insets.bottom + 8 }]}>
+      <View style={[styles.blob, { backgroundColor: c.accent, boxShadow: `0 0 120px 70px ${c.accent}` }]} />
+
       <View style={styles.header}>
-        <View style={styles.greetingRow}>
-          <Text style={[styles.greeting, { color: c.ink }]}>{hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}</Text>
-          <Text style={[styles.date, { color: c.ink }]}>{new Date(now).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
+        <View style={styles.titleRow}>
+          <Text numberOfLines={1} style={[styles.month, { color: c.ink }]} accessibilityRole="header">
+            {new Date(now).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accent }}>{new Date(now).getFullYear()}</Text>
+          </Text>
+          <Pressable
+            onPress={() => router.push('/journey')}
+            accessibilityRole="button"
+            accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes. Open your journey`}
+            style={[styles.hud, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
+          >
+            <Text style={[styles.lv, { color: c.accent }]}>LV {lv.level}</Text>
+            <View style={styles.xpCol}>
+              <View style={[styles.xpTrack, { backgroundColor: c.chip }]}>
+                <View style={[styles.xpFill, { width: `${(lv.into / lv.need) * 100}%`, backgroundColor: c.accent, boxShadow: c.glow }]} />
+              </View>
+              <Text style={[styles.micro, { color: c.muted }]}>{lv.into}/{lv.need} XP</Text>
+            </View>
+            <View style={styles.streakCol}>
+              <Text style={[styles.streak, { color: c.ink }]}>{run.days}</Text>
+              <Text style={[styles.micro, { color: c.muted }]}>STREAK</Text>
+            </View>
+          </Pressable>
         </View>
 
-        <Pressable onPress={() => router.push('/journey')} accessibilityRole="button" style={[styles.panel, styles.hud, { backgroundColor: c.panel, boxShadow: c.raised }]} accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes. Open your journey`}>
-          <View style={[styles.levelBadge, { backgroundColor: c.accent }]}>
-            <Text style={[styles.levelText, { color: c.accentInk }]}>{lv.level}</Text>
-          </View>
-          <View style={styles.xpCol}>
-            <View style={styles.periodText}>
-              <Text style={[styles.small, { color: c.ink }]}>Level {lv.level}</Text>
-              <Text style={[styles.small, { color: c.muted }]}>{lv.into} / {lv.need} XP</Text>
-            </View>
-            <View style={[styles.track, { backgroundColor: c.chip, boxShadow: c.pressedIn }]}>
-              <View style={[styles.trackFill, { width: `${(lv.into / lv.need) * 100}%`, backgroundColor: c.accent }]} />
-            </View>
-          </View>
-          <Text style={[styles.streak, { color: c.ink }]}>{run.days}d streak{run.freezes ? ` · ${run.freezes} freeze${run.freezes > 1 ? 's' : ''}` : ''}</Text>
-        </Pressable>
+        <View style={styles.week}>
+          {week.map((day) => {
+            const isToday = day === today;
+            return (
+              <Pressable
+                key={day}
+                accessibilityRole="button"
+                accessibilityLabel={`Go to ${new Date(day).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}`}
+                onPress={() => jumpTo(day)}
+                style={styles.day}
+              >
+                <Text style={[styles.weekday, { color: c.muted }]}>{new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}</Text>
+                <View style={[styles.dayNum, isToday && { backgroundColor: c.accent, boxShadow: c.glow }]}>
+                  <Text style={[styles.dayText, { color: isToday ? c.accentInk : c.ink }]}>{new Date(day).getDate()}</Text>
+                </View>
+                <View style={styles.dots}>
+                  {dotsFor(day).map((color) => (
+                    <View key={color} style={[styles.dot, { backgroundColor: color }]} />
+                  ))}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Open today's review" onPress={() => router.push('/review')} style={[styles.panel, styles.periods, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open today's review" onPress={() => router.push('/review')} style={[styles.complications, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           {PERIODS.map(([label, period]) => {
             const f = periodProgress(now, period);
             return (
-              <View key={period} style={styles.period} accessible accessibilityLabel={`${label} ${Math.floor(f * 100)} percent done`}>
-                <View style={styles.periodText}>
-                  <Text style={[styles.small, { color: c.muted }]}>{label}</Text>
-                  <Text style={[styles.small, { color: c.muted }]}>{Math.floor(f * 100)}%</Text>
+              <View key={period} style={styles.complication}>
+                <View style={styles.compText}>
+                  <Text style={[styles.micro, { color: c.muted }]}>{label}</Text>
+                  <Text style={[styles.micro, { color: c.ink }]}>{Math.floor(f * 100)}%</Text>
                 </View>
-                <View style={[styles.track, { backgroundColor: c.chip, boxShadow: c.pressedIn }]}>
-                  <View style={[styles.trackFill, { width: `${f * 100}%`, backgroundColor: c.ink }]} />
-                </View>
+                <Segments value={f} c={c} />
               </View>
             );
           })}
         </Pressable>
 
-        <View style={[styles.panel, styles.zoomBar, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+        <View style={[styles.segmented, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           {SCALES.map((s) => {
             const on = s.id === scaleId;
             return (
@@ -108,7 +154,7 @@ export function TimelineScreen() {
                 onPress={() => setScaleId(s.id)}
                 style={[styles.zoomChip, on && { backgroundColor: c.accent, boxShadow: c.selected }]}
               >
-                <Text style={[styles.chipText, { color: on ? c.accentInk : c.ink }]}>{ZOOM_LABELS[s.id]}</Text>
+                <Text style={[styles.chipText, { color: on ? c.accentInk : c.muted }]}>{ZOOM_LABELS[s.id]}</Text>
               </Pressable>
             );
           })}
@@ -124,9 +170,10 @@ export function TimelineScreen() {
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={`${on ? 'Hide' : 'Show'} ${l.name} layer`}
                 onPress={() => toggleLayer(l.id, on)}
-                style={[styles.layerChip, on ? { backgroundColor: l.color.fill, boxShadow: c.raisedSm } : { borderWidth: 2, borderStyle: 'dashed', borderColor: c.lineStrong }]}
+                style={[styles.layerChip, { backgroundColor: on ? c.panel : 'transparent', boxShadow: on ? c.raisedSm : c.pressedIn }]}
               >
-                <Text style={[styles.chipText, { color: on ? l.color.ink : c.ink }]}>{l.name}</Text>
+                <View style={[styles.layerDot, { backgroundColor: on ? l.color.fill : 'transparent', borderColor: l.color.fill }]} />
+                <Text style={[styles.chipText, { color: on ? c.ink : c.muted }]}>{l.name}</Text>
               </Pressable>
             );
           })}
@@ -152,41 +199,85 @@ export function TimelineScreen() {
           camera={{ anchorTime, following }}
           onAdd={openAdd}
           onOpen={(id) => router.push({ pathname: '/entry/[id]', params: { id } })}
+          onToggleDone={(e) => setDone(e.id, !e.done)}
         />
-        <Pressable accessibilityRole="button" accessibilityLabel="Add an entry" onPress={addNow} style={[styles.fab, { boxShadow: c.raised }]}>
-          <Text style={styles.fabText}>+</Text>
+      </View>
+
+      <View style={styles.bottom}>
+        <View style={[styles.tabBar, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+          <Tab label="Timeline" active c={c} onPress={() => {}} />
+          <Tab label="Journey" c={c} onPress={() => router.push('/journey')} />
+          <Tab label="Review" c={c} onPress={() => router.push('/review')} />
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Add an entry" onPress={addNow} style={[styles.fab, { backgroundColor: c.accent, boxShadow: c.selected }]}>
+          <Text style={[styles.fabText, { color: c.accentInk }]}>+</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
+/** Watch-complication style progress: 10 segments, the partly filled one dimmed. */
+function Segments({ value, c }: { value: number; c: Palette }) {
+  return (
+    <View style={styles.segments}>
+      {Array.from({ length: 10 }, (_, i) => {
+        const fill = Math.min(1, Math.max(0, value * 10 - i));
+        return <View key={i} style={[styles.segment, { backgroundColor: fill > 0 ? c.ink : c.chip, opacity: fill > 0 ? 0.35 + 0.65 * fill : 1 }]} />;
+      })}
+    </View>
+  );
+}
+
+function Tab({ label, active = false, c, onPress }: { label: string; active?: boolean; c: Palette; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={onPress} style={styles.tab}>
+      <View style={[styles.tabDot, { backgroundColor: active ? c.accent : 'transparent' }]} />
+      <Text style={[styles.tabText, { color: active ? c.accent : c.muted }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, gap: 10 },
-  header: { paddingHorizontal: 14, gap: 10 },
-  greetingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  greeting: { fontSize: 22, fontWeight: '800' },
-  date: { fontSize: 13, fontWeight: '800' },
-  panel: { borderRadius: 18 },
-  hud: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 8 },
-  levelBadge: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  levelText: { fontSize: 17, fontWeight: '900' },
-  xpCol: { flex: 1, gap: 4 },
-  streak: { fontSize: 12, fontWeight: '900' },
-  periods: { flexDirection: 'row', gap: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  period: { flex: 1, gap: 4 },
-  periodText: { flexDirection: 'row', justifyContent: 'space-between' },
-  small: { fontSize: 10.5, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  track: { height: 6, borderRadius: 4, overflow: 'hidden' },
-  trackFill: { height: '100%', borderRadius: 4 },
-  zoomBar: { flexDirection: 'row', gap: 3, padding: 4 },
-  zoomChip: { flex: 1, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  chipText: { fontSize: 12, fontWeight: '900' },
+  screen: { flex: 1, gap: 8, overflow: 'hidden' },
+  blob: { position: 'absolute', top: -120, right: -80, width: 160, height: 160, borderRadius: 80, opacity: 0.12 },
+  header: { paddingHorizontal: 14, gap: 8 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  month: { flexShrink: 1, fontSize: 24, fontWeight: '700', letterSpacing: -0.5 },
+  hud: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 12, borderRadius: 14 },
+  lv: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  xpCol: { width: 62, gap: 3 },
+  xpTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  xpFill: { height: '100%', borderRadius: 3 },
+  streakCol: { alignItems: 'center' },
+  streak: { fontSize: 15, fontWeight: '700', lineHeight: 17, fontVariant: ['tabular-nums'] },
+  micro: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6, fontVariant: ['tabular-nums'] },
+  week: { flexDirection: 'row' },
+  day: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 2 },
+  weekday: { fontSize: 11, fontWeight: '600' },
+  dayNum: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  dayText: { fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  dots: { flexDirection: 'row', gap: 2, height: 5 },
+  dot: { width: 5, height: 5, borderRadius: 3 },
+  complications: { flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14 },
+  complication: { flex: 1, gap: 4 },
+  compText: { flexDirection: 'row', justifyContent: 'space-between' },
+  segments: { flexDirection: 'row', gap: 2 },
+  segment: { flex: 1, height: 8, borderRadius: 2 },
+  segmented: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: 14 },
+  zoomChip: { flex: 1, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  chipText: { fontSize: 12, fontWeight: '600' },
   layerRow: { flexDirection: 'row', gap: 6 },
-  layerChip: { flex: 1, height: 44, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  dirButton: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  dirText: { fontSize: 20, fontWeight: '900' },
+  layerChip: { flex: 1, height: 38, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  layerDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
+  dirButton: { width: 44, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  dirText: { fontSize: 18, fontWeight: '700' },
   trayWrap: { flex: 1, paddingHorizontal: 10 },
-  fab: { position: 'absolute', right: 22, bottom: 64, width: 60, height: 60, borderRadius: 20, backgroundColor: '#F07A2E', alignItems: 'center', justifyContent: 'center' },
-  fabText: { color: '#FFFFFF', fontSize: 32, fontWeight: '900', lineHeight: 36 },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
+  tabBar: { flex: 1, flexDirection: 'row', height: 56, borderRadius: 20, paddingHorizontal: 6 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  tabDot: { width: 4, height: 4, borderRadius: 2 },
+  tabText: { fontSize: 12.5, fontWeight: '600' },
+  fab: { width: 56, height: 56, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  fabText: { fontSize: 30, fontWeight: '600', lineHeight: 34 },
 });

@@ -94,7 +94,7 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
         <Text style={[styles.heading, { color: c.ink }]}>{id ? 'Edit entry' : 'New entry'}</Text>
         {id ? (
           <Pressable accessibilityRole="button" onPress={remove} style={styles.textButton}>
-            <Text style={[styles.textButtonLabel, { color: confirmDelete ? '#B42318' : c.muted }]}>{confirmDelete ? 'Tap to delete' : 'Delete'}</Text>
+            <Text style={[styles.textButtonLabel, { color: confirmDelete ? c.danger : c.muted }]}>{confirmDelete ? 'Tap to delete' : 'Delete'}</Text>
           </Pressable>
         ) : (
           <View style={styles.textButton} />
@@ -224,26 +224,26 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingTop: 10 },
   textButton: { minWidth: 96, height: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  textButtonLabel: { fontSize: 14, fontWeight: '900' },
-  heading: { fontSize: 20, fontWeight: '800' },
+  textButtonLabel: { fontSize: 14, fontWeight: '700' },
+  heading: { fontSize: 20, fontWeight: '600' },
   body: { padding: 16, gap: 18 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   segment: { flexWrap: 'nowrap', gap: 3, padding: 4, borderRadius: 18 },
   field: { gap: 8 },
-  label: { fontSize: 12, fontWeight: '900' },
-  input: { height: 50, borderRadius: 16, paddingHorizontal: 14, fontSize: 16, fontWeight: '800' },
+  label: { fontSize: 12, fontWeight: '700' },
+  input: { height: 50, borderRadius: 16, paddingHorizontal: 14, fontSize: 16, fontWeight: '600' },
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  when: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800' },
+  when: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   chip: { flexGrow: 1, minWidth: 44, height: 44, paddingHorizontal: 10, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   tallChip: { height: 64, flexBasis: 0, borderRadius: 18 },
   squareChip: { flexGrow: 0, width: 44 },
-  chipText: { fontSize: 12.5, fontWeight: '900' },
+  chipText: { fontSize: 12.5, fontWeight: '700' },
   arrow: { fontSize: 22, lineHeight: 26 },
   layerChip: { flexGrow: 1, height: 44, paddingHorizontal: 12, borderRadius: 999, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   plan: { borderRadius: 22, padding: 14, gap: 4, transform: [{ rotate: '-1deg' }] },
-  planLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
-  planText: { fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  planLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  planText: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
   save: { marginHorizontal: 16, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   doneButton: { marginHorizontal: 16, marginBottom: 10, height: 50, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  saveText: { fontSize: 16, fontWeight: '900' },
+  saveText: { fontSize: 16, fontWeight: '700' },
 });

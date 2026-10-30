@@ -4,6 +4,7 @@ import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
   FadeIn,
+  useAnimatedReaction,
   useAnimatedStyle,
   useFrameCallback,
   useReducedMotion,
@@ -42,9 +43,11 @@ type Props = {
   /** Tap on empty space: a time (snapped to the zoom) and the lane's layer. */
   onAdd: (at: number, layerId: string) => void;
   onOpen: (entryId: string) => void;
+  /** The round check on a card: complete or undo without opening it. */
+  onToggleDone: (entry: Entry) => void;
 };
 
-export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen }: Props) {
+export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen, onToggleDone }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
@@ -84,6 +87,14 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
       scheduleOnRN(moveWindow, anchorTime.get());
     }
   });
+
+  // Anything can stop following the clock (a drag, a tap on a day), so the button watches `following` itself.
+  useAnimatedReaction(
+    () => following.get(),
+    (now, before) => {
+      if (now !== before) scheduleOnRN(setShowNowButton, !now);
+    },
+  );
 
   const pan = usePanGesture({
     onActivate: () => {
@@ -188,7 +199,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
                   <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
                 ))}
                 {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} now={minuteNow} />
+                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} onToggleDone={onToggleDone} now={minuteNow} />
                 ))}
                 {laid.majors.filter((m) => m.label).map((m) => (
                   <Text
@@ -204,8 +215,8 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
               <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, { backgroundColor: c.veil }, veilStyle]} />
 
               <Animated.View pointerEvents="none" style={[styles.abs, zeroAlong, styles.visible, nowStyle]}>
-                <View style={[styles.abs, vertical ? { top: -1.5, height: 3, left: GUT - 4, right: 0 } : { left: -1.5, width: 3, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accent }]} />
-                <View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accent }]}>
+                <View style={[styles.abs, vertical ? { top: -1.5, height: 3, left: GUT - 4, right: 0 } : { left: -1.5, width: 3, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accent, boxShadow: c.glow }]} />
+                <View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accent, boxShadow: c.glow }]}>
                   <ClockText color={c.accentInk} />
                 </View>
               </Animated.View>
@@ -218,10 +229,13 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
             return (
               <View
                 key={layer.id}
-                style={[styles.abs, styles.laneHead, place(5, HDR - 10, GUT + i * laneW + 3, laneW - 6), { backgroundColor: layer.color.fill, boxShadow: c.raisedSm }]}
+                style={[styles.abs, styles.laneHead, place(5, HDR - 10, GUT + i * laneW + 3, laneW - 6), { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
               >
-                <Text numberOfLines={1} style={[styles.laneName, { color: layer.color.ink }]}>{layer.name}</Text>
-                <Text numberOfLines={1} style={[styles.laneSub, { color: layer.color.ink }]}>{count} today</Text>
+                <View style={[styles.laneDot, { backgroundColor: layer.color.fill, boxShadow: `0 0 8px ${layer.color.fill}` }]} />
+                <View style={styles.laneText}>
+                  <Text numberOfLines={1} style={[styles.laneName, { color: c.ink }]}>{layer.name}</Text>
+                  <Text numberOfLines={1} style={[styles.laneSub, { color: c.muted }]}>{count} today</Text>
+                </View>
               </View>
             );
           })}
@@ -246,10 +260,11 @@ type ItemProps = {
   laneStart: number;
   laneW: number;
   onOpen: (entryId: string) => void;
+  onToggleDone: (entry: Entry) => void;
   now: number;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, now }: ItemProps) {
+function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, now }: ItemProps) {
   const { entry, shape } = it;
   const sub = laneW / it.columns;
   const start = laneStart + it.column * sub;
@@ -269,13 +284,26 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, now }: 
     return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, { borderRadius: 4 }]} />;
   }
   const showTime = shape === 'card' && entry.granularity === 'moment' && it.len > (vertical ? 48 : 110);
+  const checkable = entry.kind !== 'note' && !flatPill && sub - 8 >= 96;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }]}>
       <View style={styles.row}>
         {entry.kind !== 'task' && <View style={[styles.kindMark, kindMarks[entry.kind], { borderColor: layer.color.ink, backgroundColor: entry.kind === 'note' ? layer.color.ink : 'transparent' }]} />}
-        <Text numberOfLines={1} style={[styles.itemTitle, { color: layer.color.ink }, entry.done && entry.kind === 'todo' && styles.struck]}>
+        <Text numberOfLines={1} style={[styles.itemTitle, { color: skipped ? c.muted : layer.color.ink }, entry.done && styles.struck]}>
           {entry.title}
         </Text>
+        {checkable && (
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: entry.done }}
+            accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
+            hitSlop={11}
+            onPress={() => onToggleDone(entry)}
+            style={[styles.check, { borderColor: skipped ? c.lineStrong : layer.color.ink, backgroundColor: entry.done ? layer.color.ink : 'transparent' }]}
+          >
+            {entry.done && <Text style={[styles.checkMark, { color: layer.color.fill }]}>✓</Text>}
+          </Pressable>
+        )}
       </View>
       {showTime && entry.end !== null && (
         <Text numberOfLines={1} style={[styles.itemTime, { color: layer.color.ink }]}>
@@ -304,21 +332,25 @@ const styles = StyleSheet.create({
   clip: { overflow: 'hidden' },
   visible: { overflow: 'visible' },
   noTouch: { pointerEvents: 'none' }, // as a style it's dropped on Animated views on web, so those use the prop
-  tick: { fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  tick: { fontSize: 11, fontWeight: '600', fontVariant: ['tabular-nums'] },
   tickV: { textAlign: 'right', lineHeight: 16 },
   tickH: { textAlign: 'center' },
   pill: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  clock: { fontSize: 10.5, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  laneHead: { borderRadius: 14, paddingHorizontal: 8, justifyContent: 'center' },
-  laneName: { fontSize: 12, fontWeight: '900' },
-  laneSub: { fontSize: 10.5, fontWeight: '800' },
-  card: { borderRadius: 16, paddingHorizontal: 8, paddingVertical: 6, gap: 2 },
+  clock: { fontSize: 10.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  laneHead: { borderRadius: 12, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  laneDot: { width: 8, height: 8, borderRadius: 4 },
+  laneText: { flex: 1 },
+  laneName: { fontSize: 12, fontWeight: '700' },
+  laneSub: { fontSize: 10.5, fontWeight: '600' },
+  card: { borderRadius: 14, paddingHorizontal: 9, paddingVertical: 6, gap: 2 },
   pillItem: { borderRadius: 999, paddingHorizontal: 10, justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   kindMark: { width: 10, height: 10, borderWidth: 2 },
-  itemTitle: { flexShrink: 1, fontSize: 12, fontWeight: '900' },
-  itemTime: { fontSize: 10.5, fontWeight: '800', opacity: 0.8, fontVariant: ['tabular-nums'] },
+  itemTitle: { flex: 1, fontSize: 12.5, fontWeight: '600', letterSpacing: -0.1 },
+  check: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  checkMark: { fontSize: 11, fontWeight: '700', lineHeight: 13 },
+  itemTime: { fontSize: 10.5, fontWeight: '600', opacity: 0.8, fontVariant: ['tabular-nums'] },
   struck: { textDecorationLine: 'line-through' },
   nowButton: { position: 'absolute', right: 10, bottom: 10, height: 44, paddingHorizontal: 16, borderRadius: 999, justifyContent: 'center' },
-  nowButtonText: { fontSize: 13, fontWeight: '900' },
+  nowButtonText: { fontSize: 13, fontWeight: '700' },
 });

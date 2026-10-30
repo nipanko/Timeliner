@@ -4,14 +4,18 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–6. Slice 7 is on branch `journey/goals` (checked out), not merged. 53 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries Journey (tap the level header), then says merge; next slice 8 = layer management + settings (rename/recolor/add layers, direction, week start, calm mode). After that, slice 9 = motion polish (fonts, icons, mascot, celebrations).
+- **Where the code is:** `main` has scaffold + slices 1–6. Branches not merged yet, stacked: `journey/goals` (slice 7) → `ui/pro-look` (v0.3 pro redesign, checked out). 53 tests, typecheck and lint green.
+- **Resume with:** Nipanko reviews the new look, then says merge (both branches); next slice 8 = layer management + settings, then motion polish.
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (5)
+- UI redesign v0.3 "pro" on branch `ui/pro-look` (on top of slice 7), from Nipanko's references (pill timelines, week strips, watch complications, clean cards): new dark/light tokens with hairline edges and coral glow; month title; level chip with glowing XP bar; week strip with entry dots and tap-to-jump; segmented Day/Week/Month/Year complications; outline layer chips; cards with a quick-complete ring; floating tab bar + add button; weights calmed to 600–700. "Back to now" now follows the camera state (works after a day jump). DESIGN.md updated; canvas still shows v0.2.
+- Checked on the web build in dark and light.
+
 ### 2026-10-31 (4)
 - Slice 6 merged. Branch `journey/goals` (slice 7): `milestones` table (separate from entries: not on the timeline); `core/game/badges.ts` (11 badges from streak best, comebacks, focus hours, honest planning, early tasks, fresh starts; all derived); streak now also returns best + comebacks. Journey screen (`/journey`, from the level header): goals (month/year tasks) as branches with milestone stops (add, reach, remove), "+ New goal"; Badges tab with progress. Milestone reached = +50 XP in the header.
 - Checked on the web build: create goal, add 2 milestones, reach one (1 of 2, bar), badges with progress, header XP up by 50.

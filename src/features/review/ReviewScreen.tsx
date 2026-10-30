@@ -10,7 +10,7 @@ import { addUnit, floorUnit, HOUR, MINUTE } from '@/core/time/units';
 import { saveEntry, useEntries, useLayers, type Entry } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
 import { useNow } from '@/hooks/useNow';
-import { usePalette } from '@/ui/theme';
+import { LAYER_COLORS, usePalette } from '@/ui/theme';
 
 import { closeDay, useReviewedDays } from './data';
 
@@ -122,13 +122,13 @@ export function ReviewScreen() {
           </View>
         )}
 
-        <View style={[styles.card, { backgroundColor: '#F8DE84', boxShadow: c.raised }]}>
-          <Text style={[styles.cardLabel, { color: '#4A3A00' }]}>Tomorrow&apos;s first task. At 9:00 AM, I will…</Text>
+        <View style={[styles.card, { backgroundColor: LAYER_COLORS.yellow.fill, boxShadow: c.raised }]}>
+          <Text style={[styles.cardLabel, { color: LAYER_COLORS.yellow.ink }]}>Tomorrow&apos;s first task. At 9:00 AM, I will…</Text>
           <TextInput
             value={firstTask}
             onChangeText={setFirstTask}
             placeholder="e.g. Finish the timeline gestures"
-            placeholderTextColor="#7A6420"
+            placeholderTextColor="rgba(42,31,0,0.55)"
             maxLength={200}
             accessibilityLabel="Tomorrow's first task"
             style={[styles.input, { backgroundColor: c.tray, color: c.ink, boxShadow: c.pressedIn }]}
@@ -137,7 +137,7 @@ export function ReviewScreen() {
 
         {best && (
           <View style={[styles.card, { backgroundColor: c.ink }]}>
-            <Text style={[styles.cardLabel, { color: '#FFB86B' }]}>BEST MOMENT</Text>
+            <Text style={[styles.cardLabel, { color: c.accent }]}>BEST MOMENT</Text>
             <Text style={[styles.best, { color: c.panel }]}>
               {best.title}
               {(focused.get(best.id) ?? 0) >= MINUTE ? `: ${Math.round((focused.get(best.id) ?? 0) / MINUTE)} minutes of focus` : ''}
@@ -146,8 +146,8 @@ export function ReviewScreen() {
         )}
       </ScrollView>
 
-      <Pressable accessibilityRole="button" onPress={finish} style={[styles.closeDay, { backgroundColor: '#F07A2E', boxShadow: c.raised }]}>
-        <Text style={styles.closeDayText}>{closed ? 'Done' : `Close the day · +${REVIEW_XP} XP`}</Text>
+      <Pressable accessibilityRole="button" onPress={finish} style={[styles.closeDay, { backgroundColor: c.accent, boxShadow: c.selected }]}>
+        <Text style={[styles.closeDayText, { color: c.accentInk }]}>{closed ? 'Done' : `Close the day · +${REVIEW_XP} XP`}</Text>
       </Pressable>
     </View>
   );
@@ -156,26 +156,26 @@ export function ReviewScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
-  date: { fontSize: 13, fontWeight: '900' },
-  title: { fontSize: 27, fontWeight: '800' },
+  date: { fontSize: 13, fontWeight: '700' },
+  title: { fontSize: 27, fontWeight: '600' },
   closeButton: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  closeText: { fontSize: 24, fontWeight: '900' },
+  closeText: { fontSize: 24, fontWeight: '700' },
   body: { padding: 16, gap: 12 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: { flexGrow: 1, flexBasis: '45%', borderRadius: 22, padding: 12 },
-  tileLabel: { fontSize: 12, fontWeight: '900' },
-  tileValue: { fontSize: 24, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  tileLabel: { fontSize: 12, fontWeight: '700' },
+  tileValue: { fontSize: 24, fontWeight: '600', fontVariant: ['tabular-nums'] },
   card: { borderRadius: 22, padding: 14, gap: 10 },
-  cardLabel: { fontSize: 12, fontWeight: '900' },
+  cardLabel: { fontSize: 12, fontWeight: '700' },
   path: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   node: { width: 22, height: 22, borderRadius: 11 },
-  text: { fontSize: 13, fontWeight: '800', lineHeight: 19 },
+  text: { fontSize: 13, fontWeight: '600', lineHeight: 19 },
   grow: { flex: 1 },
   missedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   smallButton: { height: 44, paddingHorizontal: 14, borderRadius: 14, justifyContent: 'center' },
-  smallButtonText: { fontSize: 12.5, fontWeight: '900' },
-  input: { height: 46, borderRadius: 14, paddingHorizontal: 12, fontSize: 15, fontWeight: '800' },
-  best: { fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  smallButtonText: { fontSize: 12.5, fontWeight: '700' },
+  input: { height: 46, borderRadius: 14, paddingHorizontal: 12, fontSize: 15, fontWeight: '600' },
+  best: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
   closeDay: { marginHorizontal: 16, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  closeDayText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  closeDayText: { fontSize: 16, fontWeight: '700' },
 });
