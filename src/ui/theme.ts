@@ -1,6 +1,10 @@
+import type Ionicons from '@expo/vector-icons/Ionicons';
+import { createContext, useContext, type ComponentProps } from 'react';
 import { useColorScheme } from 'react-native';
 
-// Tokens from docs/DESIGN.md §1 (v0.3 "pro"): dark near-black with hairline edges and a coral accent
+import type { EntryKind } from '@/core/entries/timing';
+
+// Tokens from docs/DESIGN.md §1 (v0.3 "pro"): dark near-black with hairline edges and a lime accent
 // that glows; light is warm paper with white cards. Edges are drawn as inset 1px shadows, so one
 // boxShadow token gives both the border and the elevation.
 const dark = {
@@ -12,16 +16,21 @@ const dark = {
   line: 'rgba(255,255,255,0.06)',
   lineStrong: 'rgba(255,255,255,0.18)',
   chip: '#22242B',
-  accent: '#FF7A6B',
-  accentInk: '#1A0D0B',
+  /** Accent as a fill (buttons, selected chips); text on it uses `accentInk`. */
+  accent: '#C8F25A',
+  accentInk: '#11160A',
+  /** Accent as text or a thin line on the ground or a panel. */
+  accentText: '#C8F25A',
+  /** Two stops for XP bars, the add button and glows. */
+  gradient: ['#C8F25A', '#5EE6C8'] as readonly [string, string],
   danger: '#FF8A80',
   veil: 'rgba(13,14,18,0.55)',
   laneAlt: 'rgba(255,255,255,0.02)',
   raised: 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 10px 30px rgba(0,0,0,0.35)',
   raisedSm: 'inset 0 0 0 1px rgba(255,255,255,0.07), 0 2px 8px rgba(0,0,0,0.3)',
   pressedIn: 'inset 0 0 0 1px rgba(255,255,255,0.05)',
-  selected: '0 0 0 1px rgba(255,122,107,0.55), 0 6px 18px rgba(255,122,107,0.35)',
-  glow: '0 0 12px rgba(255,122,107,0.65)',
+  selected: '0 0 0 1px rgba(200,242,90,0.55), 0 6px 18px rgba(200,242,90,0.28)',
+  glow: '0 0 14px rgba(200,242,90,0.55)',
 };
 
 export type Palette = typeof dark;
@@ -35,20 +44,38 @@ const light: Palette = {
   line: 'rgba(0,0,0,0.06)',
   lineStrong: 'rgba(0,0,0,0.2)',
   chip: '#F0EEEA',
-  accent: '#C93C31',
-  accentInk: '#FFFFFF',
+  accent: '#C6EE3E',
+  accentInk: '#141A05',
+  // Lime is too light to read on paper, so lines and text use a deep lime (5:1 on white).
+  accentText: '#4C7608',
+  gradient: ['#B7E33A', '#3FBF9E'],
   danger: '#B42318',
   veil: 'rgba(247,245,241,0.6)',
   laneAlt: 'rgba(0,0,0,0.02)',
   raised: 'inset 0 0 0 1px rgba(0,0,0,0.05), 0 8px 24px rgba(40,30,20,0.08)',
   raisedSm: 'inset 0 0 0 1px rgba(0,0,0,0.06), 0 2px 6px rgba(40,30,20,0.06)',
   pressedIn: 'inset 0 0 0 1px rgba(0,0,0,0.06)',
-  selected: '0 4px 12px rgba(201,60,49,0.3)',
-  glow: '0 0 10px rgba(201,60,49,0.45)',
+  selected: '0 0 0 1px rgba(76,118,8,0.35), 0 4px 12px rgba(110,150,20,0.28)',
+  glow: '0 0 10px rgba(110,150,20,0.45)',
 };
 
+/** Both palettes, for previews in Settings. */
+export const PALETTES = { light, dark };
+
+export type ThemePreference = 'system' | 'light' | 'dark';
+
+/** The appearance chosen in Settings; provided by the root layout. */
+export const ThemePreferenceContext = createContext<ThemePreference>('system');
+
+export function useScheme(): 'light' | 'dark' {
+  const preference = useContext(ThemePreferenceContext);
+  const system = useColorScheme();
+  if (preference !== 'system') return preference;
+  return system === 'light' ? 'light' : 'dark';
+}
+
 export function usePalette(): Palette {
-  return useColorScheme() === 'light' ? light : dark;
+  return useScheme() === 'light' ? light : dark;
 }
 
 /** Layer colors (fill / text / strong line), the same in both themes. Keys are stored in the database. */
@@ -60,3 +87,11 @@ export const LAYER_COLORS = {
   green: { fill: '#6CC070', ink: '#0D2610', strong: '#6CC070' },
   salmon: { fill: '#F28A8A', ink: '#3A0E0E', strong: '#F28A8A' },
 } satisfies Record<string, LayerColor>;
+
+export type IconName = ComponentProps<typeof Ionicons>['name'];
+
+// shortcut: icons follow the starter layer ids; add an `icon` column when layers become editable (slice 8).
+const LAYER_ICONS: Record<string, IconName> = { work: 'briefcase', study: 'book', health: 'barbell', life: 'home' };
+export const layerIcon = (layerId: string): IconName => LAYER_ICONS[layerId] ?? 'ellipse';
+
+export const KIND_ICONS: Record<EntryKind, IconName> = { task: 'time', todo: 'checkbox', note: 'document-text', reminder: 'notifications' };

@@ -61,3 +61,9 @@ export const milestones = sqliteTable('milestones', {
   doneAt: integer(),
   createdAt: integer().notNull(),
 });
+
+/** App preferences as key/value text (appearance, later week start, calm mode…). */
+export const settings = sqliteTable('settings', {
+  key: text().primaryKey(),
+  value: text().notNull(),
+});

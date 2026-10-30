@@ -1,12 +1,17 @@
 # TIMELINER — UI design v0.3 ("pro")
 
-> **v0.3 (31 Oct) replaces the clay look in the app.** Inspired by pill timelines, week strips, watch complications and clean card UIs: dark near-black with hairline edges and a glowing coral accent (gamers / tech), light warm paper with white cards. Tokens live in `src/ui/theme.ts`:
-> - Dark: ground `#0D0E12`, panel `#17181E`, ink `#F2F3F5`, muted `#9A9CA6`, accent `#FF7A6B` (dark text on it), glow `0 0 12px` accent.
-> - Light: ground `#ECE9E3`, panel `#FFFFFF`, ink `#15161A`, muted `#62656F`, accent `#C93C31` (white text).
+> **v0.3 (31 Oct) replaces the clay look in the app.** Inspired by pill timelines, week strips, watch complications and clean card UIs: dark near-black with hairline edges and a glowing lime accent (gamers / tech), light warm paper with white cards. Tokens live in `src/ui/theme.ts`:
+> - Dark: ground `#0D0E12`, panel `#17181E`, ink `#F2F3F5`, muted `#9A9CA6`, accent lime `#C8F25A` (dark text on it), gradient lime → mint `#5EE6C8`, glow `0 0 14px` lime.
+> - Light: ground `#ECE9E3`, panel `#FFFFFF`, ink `#15161A`, muted `#62656F`, accent `#C6EE3E` as a fill; lime is too pale to read on paper, so accent *text and lines* use `accentText` deep lime `#4C7608` (5:1 on white).
+> - Gradient (`gradient` token) is for rewards and primary actions only: XP bars, the add button, "Close the day", "Done", earned badges, the best-moment card.
 > - Edges are inset 1 px shadows in the elevation tokens, so one `boxShadow` gives border + depth.
 > - Layer colors: Work `#F5C542`, Study `#7C9CF5`, Health `#6CC070`, Life `#F28A8A`, all with dark text.
-> - Type: system font (SF / Roboto), weights 600–700 only, tabular numbers, small caps-style labels with letter spacing.
-> - Timeline screen: month title with the year in accent · level chip (glowing XP bar, streak) · week strip with entry dots (tap a day to jump) · Day/Week/Month/Year as 10-segment complications · segmented zoom · outline layer chips · cards with a quick-complete ring · floating tab bar (Timeline, Journey, Review) + coral add button.
+> - Type: **Space Grotesk** 600–700 for titles and numbers (level, timer, stats), **Inter** 500–700 for everything else, bundled with `expo-font` (OFL). Use `fontFamily` from `F` in `src/ui/type.ts`, never `fontWeight`. Tabular numbers; small caps-style labels with letter spacing.
+> - Icons: Ionicons (`@expo/vector-icons`), filled when active and outline when not. Task cards wear their layer's icon (Work briefcase, Study book, Health barbell, Life home); todo, note and reminder wear `KIND_ICONS`. No emoji in the UI.
+> - Appearance: System / Light / Dark in Settings (stored in the `settings` table). System follows the phone.
+> - Timeline screen: month title with the year in accent · level chip (gradient XP bar, flame streak) · week strip with entry dots (tap a day to jump) · Day/Week/Month/Year as 10-segment complications · segmented zoom · outline layer chips · cards with a quick-complete ring.
+> - Floating tab bar on every tab screen: Timeline, Journey, Review, Settings, with the gradient add button beside it (adds a task at the next quarter hour). Journey, Review and Settings are scrolling screens with a large title that stretches on pull-down and hands over to a compact bar, and sections that slide in one after another.
+> - Game juice: "+N XP" toast with a confetti burst on every gain, a level-up card that springs in, a "Badge unlocked" toast, a spring on the check mark, haptics on phones, and a scale-down on press everywhere. Confetti is off with reduced motion.
 > The design canvas below still shows v0.2 clay; the sections after this note describe v0.2 and remain the reference for motion and screen content.
 
 # v0.2 ("clay")

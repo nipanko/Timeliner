@@ -4,14 +4,20 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–6. Branches not merged yet, stacked: `journey/goals` (slice 7) → `ui/pro-look` (v0.3 pro redesign, checked out). 53 tests, typecheck and lint green.
-- **Resume with:** Nipanko reviews the new look, then says merge (both branches); next slice 8 = layer management + settings, then motion polish.
-- **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
+- **Where the code is:** `main` has scaffold + slices 1–6. Branches not merged yet, stacked: `journey/goals` (slice 7) → `ui/pro-look` (v0.3 pro redesign + lime / fonts / tabs / Settings / game juice, checked out). 55 tests, typecheck and lint green.
+- **Resume with:** Nipanko reviews the new look, then says merge (both branches); next slice 8 = layer management (rename, recolor, add, icon column) + more settings (direction, week start, calm mode).
+- **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (6)
+- "Tweak the look" on `ui/pro-look`, from Nipanko's picks: lime accent with a lime → mint gradient for rewards and primary buttons; Space Grotesk + Inter fonts; Ionicons on tabs, cards (tasks wear their layer's icon), the add sheet and the focus screen; System / Light / Dark in a new Settings tab with a profile card (level, XP bar, streak, badges, hours focused); `settings` table (migration 0005).
+- Game juice: one Celebrations overlay driven by `core/game/events.ts` (+N XP toast with confetti, level-up card, badge toast, haptics on phones); spring on the check mark; press scale everywhere. Journey, Review and Settings are tabs now, with a large title that stretches on pull and hands over to a compact bar, and staggered section entrances. Focus: display-font timer, gradient progress, glowing dial while running. The tab bar's + adds at the next quarter hour.
+- Fixed while checking the web build: the tab bar crashed web (style array passed into expo-router's `Slot`); a long Journey pushed the tab bar off-screen (`TabSlot` never shrinks by default); the timeline's glow blob let the screen slide sideways when a card's check took focus.
+- Checked on the web build (desktop and 400×640): all four tabs, dark / light switching, +28 XP toast, scroll hand-over, add sheet at 12:15 AM, focus screen. Not seen: confetti and entrance springs, because the browser pane asks for reduced motion (Windows "Animation effects" off) and the app honours that. Not run on a phone.
+
 ### 2026-10-31 (5)
 - UI redesign v0.3 "pro" on branch `ui/pro-look` (on top of slice 7), from Nipanko's references (pill timelines, week strips, watch complications, clean cards): new dark/light tokens with hairline edges and coral glow; month title; level chip with glowing XP bar; week strip with entry dots and tap-to-jump; segmented Day/Week/Month/Year complications; outline layer chips; cards with a quick-complete ring; floating tab bar + add button; weights calmed to 600–700. "Back to now" now follows the camera state (works after a day jump). DESIGN.md updated; canvas still shows v0.2.
 - Checked on the web build in dark and light.

@@ -1,22 +1,21 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { streak } from '@/core/game/streaks';
-import { levelFor, MILESTONE_XP, REVIEW_XP, totalXp } from '@/core/game/xp';
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, floorUnit, HOUR } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
-import { useFocusedByEntry } from '@/features/focus/data';
-import { useMilestones } from '@/features/journey/data';
-import { useReviewedDays } from '@/features/review/data';
+import { useProgress } from '@/features/game/useProgress';
 import { useNow } from '@/hooks/useNow';
 import { syncEntryNotifications } from '@/lib/notifications';
 import { usePalette, type Palette } from '@/ui/theme';
+import { F } from '@/ui/type';
 
 import { TimelineView } from './TimelineView';
 
@@ -37,11 +36,9 @@ export function TimelineScreen() {
   const following = useSharedValue(true);
   const layers = allLayers.filter((l) => l.visible);
   const scale = getScale(scaleId);
-  const focused = useFocusedByEntry(now);
-  const reviewed = useReviewedDays();
-  const reachedMilestones = useMilestones().filter((m) => m.doneAt !== null).length;
-  const lv = levelFor(totalXp(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) }))) + REVIEW_XP * reviewed.length + MILESTONE_XP * reachedMilestones);
-  const run = streak(entries.filter((e) => e.done && (e.kind === 'task' || e.kind === 'todo')).map((e) => e.start), now);
+  const progress = useProgress();
+  const lv = progress.level;
+  const run = progress.streak;
   useEffect(() => {
     syncEntryNotifications(entries, Date.now());
   }, [entries]);
@@ -70,17 +67,18 @@ export function TimelineScreen() {
   };
   const openAdd = (at: number, layerId: string) =>
     router.push({ pathname: '/entry/[id]', params: { id: 'new', at: String(at), layer: layerId, scale: scaleId } });
-  // The + button adds at the next free slot after now.
-  const addNow = () => openAdd(addUnit(floorUnit(Date.now(), scale.snap.unit, scale.snap.step), scale.snap.unit, scale.snap.step), layers[0]?.id ?? '');
 
   return (
-    <View style={[styles.screen, { backgroundColor: c.ground, paddingTop: insets.top + 6, paddingBottom: insets.bottom + 8 }]}>
-      <View style={[styles.blob, { backgroundColor: c.accent, boxShadow: `0 0 120px 70px ${c.accent}` }]} />
+    <View style={[styles.screen, { backgroundColor: c.ground, paddingTop: insets.top + 8 }]}>
+      {/* Clipped in its own layer: overflow in the screen itself lets the browser scroll it sideways when a control takes focus. */}
+      <View style={styles.glowLayer}>
+        <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.blob, { boxShadow: `0 0 140px 80px ${c.gradient[1]}` }]} />
+      </View>
 
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text numberOfLines={1} style={[styles.month, { color: c.ink }]} accessibilityRole="header">
-            {new Date(now).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accent }}>{new Date(now).getFullYear()}</Text>
+            {new Date(now).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accentText }}>{new Date(now).getFullYear()}</Text>
           </Text>
           <Pressable
             onPress={() => router.push('/journey')}
@@ -88,16 +86,16 @@ export function TimelineScreen() {
             accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes. Open your journey`}
             style={[styles.hud, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
           >
-            <Text style={[styles.lv, { color: c.accent }]}>LV {lv.level}</Text>
+            <Text style={[styles.lv, { color: c.accentText }]}>LV {lv.level}</Text>
             <View style={styles.xpCol}>
               <View style={[styles.xpTrack, { backgroundColor: c.chip }]}>
-                <View style={[styles.xpFill, { width: `${(lv.into / lv.need) * 100}%`, backgroundColor: c.accent, boxShadow: c.glow }]} />
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.xpFill, { width: `${(lv.into / lv.need) * 100}%`, boxShadow: c.glow }]} />
               </View>
               <Text style={[styles.micro, { color: c.muted }]}>{lv.into}/{lv.need} XP</Text>
             </View>
-            <View style={styles.streakCol}>
+            <View style={styles.streakRow}>
+              <Ionicons name="flame" size={16} color={run.days ? '#FF9F43' : c.muted} />
               <Text style={[styles.streak, { color: c.ink }]}>{run.days}</Text>
-              <Text style={[styles.micro, { color: c.muted }]}>STREAK</Text>
             </View>
           </Pressable>
         </View>
@@ -111,7 +109,7 @@ export function TimelineScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Go to ${new Date(day).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}`}
                 onPress={() => jumpTo(day)}
-                style={styles.day}
+                style={({ pressed }) => [styles.day, pressed && styles.pressed]}
               >
                 <Text style={[styles.weekday, { color: c.muted }]}>{new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}</Text>
                 <View style={[styles.dayNum, isToday && { backgroundColor: c.accent, boxShadow: c.glow }]}>
@@ -152,7 +150,7 @@ export function TimelineScreen() {
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={`Zoom to ${ZOOM_LABELS[s.id]}`}
                 onPress={() => setScaleId(s.id)}
-                style={[styles.zoomChip, on && { backgroundColor: c.accent, boxShadow: c.selected }]}
+                style={({ pressed }) => [styles.zoomChip, on && { backgroundColor: c.accent, boxShadow: c.selected }, pressed && styles.pressed]}
               >
                 <Text style={[styles.chipText, { color: on ? c.accentInk : c.muted }]}>{ZOOM_LABELS[s.id]}</Text>
               </Pressable>
@@ -170,7 +168,7 @@ export function TimelineScreen() {
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={`${on ? 'Hide' : 'Show'} ${l.name} layer`}
                 onPress={() => toggleLayer(l.id, on)}
-                style={[styles.layerChip, { backgroundColor: on ? c.panel : 'transparent', boxShadow: on ? c.raisedSm : c.pressedIn }]}
+                style={({ pressed }) => [styles.layerChip, { backgroundColor: on ? c.panel : 'transparent', boxShadow: on ? c.raisedSm : c.pressedIn }, pressed && styles.pressed]}
               >
                 <View style={[styles.layerDot, { backgroundColor: on ? l.color.fill : 'transparent', borderColor: l.color.fill }]} />
                 <Text style={[styles.chipText, { color: on ? c.ink : c.muted }]}>{l.name}</Text>
@@ -203,16 +201,6 @@ export function TimelineScreen() {
         />
       </View>
 
-      <View style={styles.bottom}>
-        <View style={[styles.tabBar, { backgroundColor: c.panel, boxShadow: c.raised }]}>
-          <Tab label="Timeline" active c={c} onPress={() => {}} />
-          <Tab label="Journey" c={c} onPress={() => router.push('/journey')} />
-          <Tab label="Review" c={c} onPress={() => router.push('/review')} />
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Add an entry" onPress={addNow} style={[styles.fab, { backgroundColor: c.accent, boxShadow: c.selected }]}>
-          <Text style={[styles.fabText, { color: c.accentInk }]}>+</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -229,34 +217,26 @@ function Segments({ value, c }: { value: number; c: Palette }) {
   );
 }
 
-function Tab({ label, active = false, c, onPress }: { label: string; active?: boolean; c: Palette; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={onPress} style={styles.tab}>
-      <View style={[styles.tabDot, { backgroundColor: active ? c.accent : 'transparent' }]} />
-      <Text style={[styles.tabText, { color: active ? c.accent : c.muted }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  screen: { flex: 1, gap: 8, overflow: 'hidden' },
-  blob: { position: 'absolute', top: -120, right: -80, width: 160, height: 160, borderRadius: 80, opacity: 0.12 },
-  header: { paddingHorizontal: 14, gap: 8 },
+  screen: { flex: 1, gap: 10, overflow: 'hidden' },
+  glowLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', pointerEvents: 'none' },
+  blob: { position: 'absolute', top: -110, right: -70, width: 170, height: 170, borderRadius: 85, opacity: 0.16 },
+  header: { paddingHorizontal: 16, gap: 10 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  month: { flexShrink: 1, fontSize: 24, fontWeight: '700', letterSpacing: -0.5 },
+  month: { flexShrink: 1, fontSize: 26, fontFamily: F.display, letterSpacing: -0.6 },
   hud: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 12, borderRadius: 14 },
-  lv: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  lv: { fontSize: 14, fontFamily: F.display, letterSpacing: 0.5 },
   xpCol: { width: 62, gap: 3 },
   xpTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
   xpFill: { height: '100%', borderRadius: 3 },
-  streakCol: { alignItems: 'center' },
-  streak: { fontSize: 15, fontWeight: '700', lineHeight: 17, fontVariant: ['tabular-nums'] },
-  micro: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6, fontVariant: ['tabular-nums'] },
+  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  streak: { fontSize: 16, fontFamily: F.display, fontVariant: ['tabular-nums'] },
+  micro: { fontSize: 10, fontFamily: F.semi, letterSpacing: 0.6, fontVariant: ['tabular-nums'] },
   week: { flexDirection: 'row' },
   day: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 2 },
-  weekday: { fontSize: 11, fontWeight: '600' },
+  weekday: { fontSize: 11, fontFamily: F.semi },
   dayNum: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  dayText: { fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  dayText: { fontSize: 16, fontFamily: F.displaySemi, fontVariant: ['tabular-nums'] },
   dots: { flexDirection: 'row', gap: 2, height: 5 },
   dot: { width: 5, height: 5, borderRadius: 3 },
   complications: { flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14 },
@@ -266,18 +246,12 @@ const styles = StyleSheet.create({
   segment: { flex: 1, height: 8, borderRadius: 2 },
   segmented: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: 14 },
   zoomChip: { flex: 1, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  chipText: { fontSize: 12, fontWeight: '600' },
+  chipText: { fontSize: 12, fontFamily: F.semi },
   layerRow: { flexDirection: 'row', gap: 6 },
   layerChip: { flex: 1, height: 38, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   layerDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
   dirButton: { width: 44, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  dirText: { fontSize: 18, fontWeight: '700' },
-  trayWrap: { flex: 1, paddingHorizontal: 10 },
-  bottom: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
-  tabBar: { flex: 1, flexDirection: 'row', height: 56, borderRadius: 20, paddingHorizontal: 6 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  tabDot: { width: 4, height: 4, borderRadius: 2 },
-  tabText: { fontSize: 12.5, fontWeight: '600' },
-  fab: { width: 56, height: 56, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  fabText: { fontSize: 30, fontWeight: '600', lineHeight: 34 },
+  dirText: { fontSize: 18, fontFamily: F.bold },
+  trayWrap: { flex: 1, paddingHorizontal: 12 },
+  pressed: { transform: [{ scale: 0.95 }], opacity: 0.85 },
 });

@@ -33,13 +33,14 @@ Stack is fixed in `PLAN.md`. This file says how the pieces fit. UI look: `DESIGN
 ```
 src/
   app/                        Expo Router: every file is a screen
-    _layout.tsx               root stack + providers (db, theme)
-    (tabs)/_layout.tsx        bottom tabs
+    _layout.tsx               root stack + providers (db, fonts, theme preference) + celebration overlay
+    (tabs)/_layout.tsx        floating tab bar + add button (headless expo-router/ui tabs)
     (tabs)/index.tsx          Timeline (home)
-    (tabs)/focus.tsx          current / next task in focus mode
+    (tabs)/journey.tsx        goals with milestones, badges
     (tabs)/review.tsx         end-of-day run summary
+    (tabs)/settings.tsx       profile + appearance
     entry/[id].tsx            add / edit sheet (modal); id = "new" to create
-    settings.tsx
+    focus/[id].tsx            focus mode for one task
   core/
     time/units.ts             floorUnit, addUnit: second → year, local time, DST-safe
     time/periods.ts           start/end/progress of day, week, month, year
@@ -53,6 +54,7 @@ src/
     game/streaks.ts           forgiving streak + freezes
     game/milestones.ts        goal progress, next milestone, merge-back
     game/badges.ts            badge rules → which badges are earned (pure)
+    game/events.ts            two progress snapshots → xp / level / badge events for celebrations
   db/
     schema.ts                 Drizzle tables (§3)
     client.ts                 opens SQLite (async: on web it runs in a worker); the root layout then runs migrations
@@ -62,9 +64,10 @@ src/
     entries/                  EntrySheet + actions (create, complete, move, delete)
     focus/                    FocusRing, ParkThought + actions (start, pause, finish)
     review/                   RunSummary
-    game/                     Hud (level, XP bar, streak), Character
+    game/                     useProgress (XP, level, streak, badges from live queries), Celebrations
+    settings/                 SettingsScreen, useSetting / setSetting
   lib/notifications.ts        thin wrapper over expo-notifications
-  ui/                         theme tokens, Button, Chip, Sheet, Icon
+  ui/                         theme.ts (tokens, icons), type.ts (fonts), ScrollScreen
 ```
 
 Tests sit next to the code: `src/core/game/xp.test.ts`.
@@ -80,7 +83,8 @@ All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a who
 | `focus_sessions` | `id`, `entryId`, `startedAt`, `endedAt?`, `pausedMs`, `outcome?` (`done` \| `stopped`) | Actual time for planned-vs-actual. |
 | `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | **Not built yet.** Added when rewards come from things that aren't entries (focus sessions, breaks, reviews, league). Until then XP is derived (§5). |
 | `day_logs` | `day` (local `YYYY-MM-DD`), `reviewedAt?`, `freezeUsed` | Streak and review bookkeeping. |
-| `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | **Not built yet.** Badges are derived from entries (`core/game/badges.ts`). Add this table with the celebration animations, so each unlock plays exactly once. |
+| `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | **Not built yet.** Badges are derived from entries (`core/game/badges.ts`). Celebrations diff progress in memory (§11), so an unlock plays when it happens while the app is open. Add this table when unlocks earned while the app was closed (or on another device) must play too. |
+| `settings` | `key`, `value` | App preferences as text, e.g. `theme` = `system` \| `light` \| `dark`. |
 
 A **goal** is a long task (`granularity` month or year). Its **milestones** live in their own `milestones` table (`id`, `goalId`, `title`, `sort`, `doneAt?`, `createdAt`), since they are not on the timeline; on the Journey screen the goal is a branch and the milestones are its stops. Each reached milestone earns 50 XP.
 
@@ -214,8 +218,8 @@ Already installed: Reanimated, Gesture Handler, Expo Router.
 Look and timings: DESIGN.md §2. How we build it:
 - **One code path for phone and web.** Reanimated 4 runs animations on the UI thread on iOS/Android and in the browser on web. Simple effects (press, pop, toast, sheet, list stagger) use its CSS-style animations and transitions; gesture-driven motion (pan, pinch, the flowing now-line) uses shared values + worklets. Read the Reanimated docs for the installed version before the first animation slice.
 - **Only `transform` and `opacity` animate.** No animating width/height/top on the UI thread; progress bars use `scaleX`.
-- **Celebrations are data-driven.** `core` returns events (`level_up`, `milestone_reached`, `badge_unlocked`); the UI maps each event to an animation + `expo-haptics` pattern. Same rule as everything else: UI shows, core decides.
-- **Budget:** 60 fps on a low-end Android phone (test device to pick in Phase 1). At most ~12 confetti pieces; loops pause when the screen is not visible.
+- **Celebrations are data-driven.** `core/game/events.ts` turns the progress before and after a change into events (`xp`, `level`, `badge`); `features/game/Celebrations.tsx` (one overlay in the root layout, so a gain anywhere is celebrated) maps each to an animation + `expo-haptics` pattern. Same rule as everything else: UI shows, core decides.
+- **Budget:** 60 fps on a low-end Android phone (test device to pick in Phase 1). ~12 confetti pieces per XP burst, 24 for a level-up; loops pause when the screen is not visible.
 - **Reduce motion** (`useReducedMotion`) and in-app **calm mode** switch loops and confetti off.
 - **Mascot:** SVG + Reanimated for the MVP; Rive later for richer character animation.
 

@@ -1,94 +1,100 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { badges, badgeStats } from '@/core/game/badges';
 import { useEntries, useLayers, type Entry } from '@/features/entries/data';
-import { useFocusedByEntry } from '@/features/focus/data';
-import { useNow } from '@/hooks/useNow';
-import { usePalette, type Palette } from '@/ui/theme';
+import { useProgress } from '@/features/game/useProgress';
+import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
+import { usePalette, type IconName, type Palette } from '@/ui/theme';
+import { F } from '@/ui/type';
 
 import { addMilestone, deleteMilestone, setMilestoneReached, useMilestones, type Milestone } from './data';
 
-function close() {
-  if (router.canGoBack()) router.back();
-  else router.replace('/');
-}
-
 const isGoal = (e: Entry) => e.kind === 'task' && (e.granularity === 'month' || e.granularity === 'year');
+
+const badgeIcon = (id: string): IconName =>
+  id.startsWith('streak') ? 'flame' : id.startsWith('focus') ? 'timer' : ({ honest: 'checkmark-done', early: 'sunny', comeback: 'refresh', fresh: 'sparkles' } as Record<string, IconName>)[id] ?? 'ribbon';
 
 /** Goals branch off your timeline; milestones are their stops (DESIGN.md §3.5, RESEARCH.md #21). */
 export function JourneyScreen() {
   const c = usePalette();
-  const insets = useSafeAreaInsets();
-  const now = useNow(60_000);
   const entries = useEntries();
   const layers = useLayers();
-  const focused = useFocusedByEntry(now);
   const all = useMilestones();
+  const { badges } = useProgress();
   const [tab, setTab] = useState<'goals' | 'badges'>('goals');
   const goals = entries.filter(isGoal).sort((a, b) => a.start - b.start);
-  const list = badges(badgeStats(entries.map((e) => ({ ...e, focusedMs: focused.get(e.id) })), now));
+  const earned = badges.filter((b) => b.earned).length;
 
   return (
-    <View style={[styles.screen, { backgroundColor: c.ground, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]}>
-      <View style={styles.top}>
-        <Text style={[styles.title, { color: c.ink }]}>Journey</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close journey" onPress={close} style={[styles.closeButton, { backgroundColor: c.panel, boxShadow: c.raised }]}>
-          <Text style={[styles.closeText, { color: c.ink }]}>×</Text>
-        </Pressable>
-      </View>
-
-      <View style={[styles.tabs, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+    <ScrollScreen title="Journey" subtitle={`${goals.length} goal${goals.length === 1 ? '' : 's'} · ${earned} of ${badges.length} badges`}>
+      <View style={[styles.tabs, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
         {(['goals', 'badges'] as const).map((t) => (
           <Pressable
             key={t}
             accessibilityRole="button"
             accessibilityState={{ selected: tab === t }}
             onPress={() => setTab(t)}
-            style={[styles.tab, tab === t && { backgroundColor: c.accent, boxShadow: c.selected }]}
+            style={({ pressed }) => [styles.tab, tab === t && { backgroundColor: c.accent, boxShadow: c.selected }, pressed && styles.pressed]}
           >
-            <Text style={[styles.tabText, { color: tab === t ? c.accentInk : c.ink }]}>{t === 'goals' ? 'Goals' : 'Badges'}</Text>
+            <Ionicons name={t === 'goals' ? 'flag' : 'ribbon'} size={15} color={tab === t ? c.accentInk : c.muted} />
+            <Text style={[styles.tabText, { color: tab === t ? c.accentInk : c.muted }]}>{t === 'goals' ? 'Goals' : 'Badges'}</Text>
           </Pressable>
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {tab === 'goals' ? (
-          <>
-            {goals.map((g) => (
-              <GoalCard key={g.id} goal={g} stops={all.filter((m) => m.goalId === g.id)} color={layers.find((l) => l.id === g.layerId)?.color.strong ?? c.accent} c={c} />
-            ))}
-            {!goals.length && <Text style={[styles.empty, { color: c.ink }]}>A goal is a task for a whole month or year. Add one, then break it into milestones.</Text>}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/entry/[id]', params: { id: 'new', at: String(Date.now()), scale: 'year' } })}
-              style={[styles.newGoal, { backgroundColor: c.panel, boxShadow: c.raised }]}
-            >
-              <Text style={[styles.tabText, { color: c.ink }]}>+ New goal</Text>
-            </Pressable>
-          </>
-        ) : (
-          <View style={styles.grid}>
-            {list.map((b) => (
-              <View key={b.id} style={[styles.badge, { backgroundColor: c.panel, boxShadow: c.raised, opacity: b.earned ? 1 : 0.75 }]} accessible accessibilityLabel={`${b.name}, ${b.desc}, ${b.earned ? 'earned' : `${Math.round(b.progress * 100)} percent`}`}>
-                <View style={[styles.coin, { backgroundColor: b.earned ? '#F5C342' : c.chip }]}>
-                  <Text style={[styles.coinText, { color: b.earned ? '#4A3A00' : c.muted }]}>{b.earned ? '★' : `${Math.round(b.progress * 100)}%`}</Text>
+      {tab === 'goals' ? (
+        <>
+          {goals.map((g, i) => (
+            <Reveal key={g.id} index={i}>
+              <GoalCard goal={g} stops={all.filter((m) => m.goalId === g.id)} color={layers.find((l) => l.id === g.layerId)?.color.strong ?? c.accentText} c={c} />
+            </Reveal>
+          ))}
+          {!goals.length && <Text style={[styles.empty, { color: c.ink }]}>A goal is a task for a whole month or year. Add one, then break it into milestones.</Text>}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/entry/[id]', params: { id: 'new', scale: 'year' } })}
+            style={({ pressed }) => [styles.newGoal, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+          >
+            <Ionicons name="add-circle" size={18} color={c.accentText} />
+            <Text style={[styles.tabText, { color: c.ink }]}>New goal</Text>
+          </Pressable>
+        </>
+      ) : (
+        <View style={styles.grid}>
+          {badges.map((b, i) => (
+            <View key={b.id} style={styles.badgeCell}>
+              <Reveal index={i}>
+                <View
+                  style={[styles.badge, { backgroundColor: c.panel, boxShadow: b.earned ? c.selected : c.raisedSm }]}
+                  accessible
+                  accessibilityLabel={`${b.name}, ${b.desc}, ${b.earned ? 'earned' : `${Math.round(b.progress * 100)} percent`}`}
+                >
+                  {b.earned ? (
+                    <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.coin, { boxShadow: c.glow }]}>
+                      <Ionicons name={badgeIcon(b.id)} size={24} color={c.accentInk} />
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.coin, { backgroundColor: c.chip }]}>
+                      <Ionicons name={badgeIcon(b.id)} size={22} color={c.muted} />
+                    </View>
+                  )}
+                  <Text style={[styles.badgeName, { color: c.ink }]}>{b.name}</Text>
+                  <Text style={[styles.badgeDesc, { color: c.muted }]}>{b.desc}</Text>
+                  {!b.earned && (
+                    <View style={[styles.track, { backgroundColor: c.chip }]}>
+                      <View style={[styles.fill, { width: `${b.progress * 100}%`, backgroundColor: c.accentText }]} />
+                    </View>
+                  )}
                 </View>
-                <Text style={[styles.badgeName, { color: c.ink }]}>{b.name}</Text>
-                <Text style={[styles.badgeDesc, { color: c.muted }]}>{b.desc}</Text>
-                {!b.earned && (
-                  <View style={[styles.track, { backgroundColor: c.chip }]}>
-                    <View style={[styles.fill, { width: `${b.progress * 100}%`, backgroundColor: c.accent }]} />
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </View>
+              </Reveal>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollScreen>
   );
 }
 
@@ -133,7 +139,7 @@ function GoalCard({ goal, stops, color, c }: { goal: Entry; stops: Milestone[]; 
                 <Text style={[styles.stopText, { color: c.ink }, done && styles.struck]}>{m.title}</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${m.title}`} onPress={() => deleteMilestone(m)} style={styles.remove}>
-                <Text style={[styles.removeText, { color: c.muted }]}>×</Text>
+                <Ionicons name="close" size={18} color={c.muted} />
               </Pressable>
             </View>
           );
@@ -152,7 +158,7 @@ function GoalCard({ goal, stops, color, c }: { goal: Entry; stops: Milestone[]; 
           style={[styles.input, { backgroundColor: c.tray, color: c.ink, boxShadow: c.pressedIn }]}
         />
         <Pressable accessibilityRole="button" accessibilityLabel="Add milestone" onPress={add} style={[styles.addButton, { backgroundColor: c.accent, boxShadow: c.selected }]}>
-          <Text style={[styles.addText, { color: c.accentInk }]}>+</Text>
+          <Ionicons name="add" size={22} color={c.accentInk} />
         </Pressable>
       </View>
     </View>
@@ -160,38 +166,31 @@ function GoalCard({ goal, stops, color, c }: { goal: Entry; stops: Milestone[]; 
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
-  title: { fontSize: 28, fontWeight: '600' },
-  closeButton: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  closeText: { fontSize: 24, fontWeight: '700' },
-  tabs: { flexDirection: 'row', gap: 3, padding: 4, borderRadius: 18, marginHorizontal: 16, marginTop: 10 },
-  tab: { flex: 1, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 13.5, fontWeight: '700' },
-  body: { padding: 16, gap: 12 },
-  empty: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  newGoal: { height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  goal: { borderRadius: 22, padding: 14, gap: 8 },
-  goalWhen: { fontSize: 12, fontWeight: '700' },
-  goalTitle: { fontSize: 19, fontWeight: '600' },
+  tabs: { flexDirection: 'row', gap: 3, padding: 4, borderRadius: 18 },
+  tab: { flex: 1, height: 44, borderRadius: 14, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
+  tabText: { fontSize: 13.5, fontFamily: F.bold },
+  empty: { fontSize: 14, fontFamily: F.text, lineHeight: 20 },
+  newGoal: { height: 52, borderRadius: 16, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
+  goal: { borderRadius: 22, padding: 16, gap: 10 },
+  goalWhen: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1 },
+  goalTitle: { fontSize: 20, fontFamily: F.display, letterSpacing: -0.3 },
   track: { height: 8, borderRadius: 5, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 5 },
-  branch: { borderLeftWidth: 4, marginLeft: 10, paddingLeft: 4, gap: 2 },
+  branch: { borderLeftWidth: 3, marginLeft: 10, paddingLeft: 4, gap: 2 },
   stopRow: { flexDirection: 'row', alignItems: 'center' },
   stopHit: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: -17 },
   stop: { width: 22, height: 22, borderRadius: 11 },
-  stopText: { flex: 1, fontSize: 14, fontWeight: '600' },
+  stopText: { flex: 1, fontSize: 14, fontFamily: F.semi },
   struck: { textDecorationLine: 'line-through', opacity: 0.6 },
   remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  removeText: { fontSize: 20, fontWeight: '700' },
   addRow: { flexDirection: 'row', gap: 8 },
-  input: { flex: 1, height: 44, borderRadius: 14, paddingHorizontal: 12, fontSize: 14, fontWeight: '600' },
+  input: { flex: 1, height: 44, borderRadius: 14, paddingHorizontal: 12, fontSize: 14, fontFamily: F.text },
   addButton: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  addText: { fontSize: 22, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  badge: { flexGrow: 1, flexBasis: '30%', borderRadius: 20, padding: 10, alignItems: 'center', gap: 4 },
+  badgeCell: { flexGrow: 1, flexBasis: '30%' },
+  badge: { borderRadius: 20, padding: 12, alignItems: 'center', gap: 5 },
   coin: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
-  coinText: { fontSize: 15, fontWeight: '700' },
-  badgeName: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  badgeDesc: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  badgeName: { fontSize: 12.5, fontFamily: F.bold, textAlign: 'center' },
+  badgeDesc: { fontSize: 11, fontFamily: F.text, textAlign: 'center' },
+  pressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
 });

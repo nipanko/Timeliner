@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -6,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEFAULT_GRANULARITY, entryTiming, nudge, type EntryKind, type Granularity } from '@/core/entries/timing';
 import { APPROX_MS, MINUTE } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
-import { usePalette, type Palette } from '@/ui/theme';
+import { KIND_ICONS, layerIcon, usePalette, type IconName, type Palette } from '@/ui/theme';
+import { F } from '@/ui/type';
 
 import { deleteEntry, saveEntry, setDone, useEntry, useLayers, type Entry, type Layer } from './data';
 
@@ -104,7 +106,7 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.row}>
           {KINDS.map(([k, label]) => (
-            <Chip key={k} c={c} label={label} on={form.kind === k} onPress={() => set({ kind: k })} tall />
+            <Chip key={k} c={c} label={label} icon={KIND_ICONS[k]} on={form.kind === k} onPress={() => set({ kind: k })} tall />
           ))}
         </View>
 
@@ -162,6 +164,7 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
                 onPress={() => set({ layerId: l.id })}
                 style={[styles.layerChip, { backgroundColor: l.color.fill, borderColor: l.id === layer.id ? l.color.ink : l.color.fill, boxShadow: c.raisedSm }]}
               >
+                <Ionicons name={layerIcon(l.id)} size={14} color={l.color.ink} />
                 <Text style={[styles.chipText, { color: l.color.ink }]}>{l.name}</Text>
               </Pressable>
             ))}
@@ -199,23 +202,26 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
   );
 }
 
-type ChipProps = { c: Palette; label: string; a11y?: string; on?: boolean; onPress: () => void; tall?: boolean; flat?: boolean; square?: boolean };
+type ChipProps = { c: Palette; label: string; icon?: IconName; a11y?: string; on?: boolean; onPress: () => void; tall?: boolean; flat?: boolean; square?: boolean };
 
-function Chip({ c, label, a11y, on = false, onPress, tall, flat, square }: ChipProps) {
+function Chip({ c, label, icon, a11y, on = false, onPress, tall, flat, square }: ChipProps) {
+  const color = on ? c.accentInk : c.ink;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={a11y ?? label}
       accessibilityState={{ selected: on }}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.chip,
         tall && styles.tallChip,
         square && styles.squareChip,
         on ? { backgroundColor: c.accent, boxShadow: c.selected } : flat ? null : { backgroundColor: c.panel, boxShadow: c.raisedSm },
+        pressed && styles.pressed,
       ]}
     >
-      <Text style={[styles.chipText, square && styles.arrow, { color: on ? c.accentInk : c.ink }]}>{label}</Text>
+      {icon && <Ionicons name={icon} size={18} color={color} />}
+      <Text style={[styles.chipText, square && styles.arrow, { color }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -224,26 +230,27 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingTop: 10 },
   textButton: { minWidth: 96, height: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  textButtonLabel: { fontSize: 14, fontWeight: '700' },
-  heading: { fontSize: 20, fontWeight: '600' },
+  textButtonLabel: { fontSize: 14, fontFamily: F.bold },
+  heading: { fontSize: 20, fontFamily: F.semi },
   body: { padding: 16, gap: 18 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   segment: { flexWrap: 'nowrap', gap: 3, padding: 4, borderRadius: 18 },
   field: { gap: 8 },
-  label: { fontSize: 12, fontWeight: '700' },
-  input: { height: 50, borderRadius: 16, paddingHorizontal: 14, fontSize: 16, fontWeight: '600' },
+  label: { fontSize: 12, fontFamily: F.bold },
+  input: { height: 50, borderRadius: 16, paddingHorizontal: 14, fontSize: 16, fontFamily: F.semi },
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  when: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
+  when: { flex: 1, textAlign: 'center', fontSize: 17, fontFamily: F.semi },
   chip: { flexGrow: 1, minWidth: 44, height: 44, paddingHorizontal: 10, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  tallChip: { height: 64, flexBasis: 0, borderRadius: 18 },
+  tallChip: { height: 64, flexBasis: 0, borderRadius: 18, gap: 4 },
   squareChip: { flexGrow: 0, width: 44 },
-  chipText: { fontSize: 12.5, fontWeight: '700' },
+  chipText: { fontSize: 12.5, fontFamily: F.bold },
   arrow: { fontSize: 22, lineHeight: 26 },
-  layerChip: { flexGrow: 1, height: 44, paddingHorizontal: 12, borderRadius: 999, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  layerChip: { flexGrow: 1, height: 44, paddingHorizontal: 12, borderRadius: 999, borderWidth: 3, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
   plan: { borderRadius: 22, padding: 14, gap: 4, transform: [{ rotate: '-1deg' }] },
-  planLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  planText: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
+  planLabel: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1 },
+  planText: { fontSize: 15, fontFamily: F.bold, lineHeight: 21 },
   save: { marginHorizontal: 16, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   doneButton: { marginHorizontal: 16, marginBottom: 10, height: 50, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  saveText: { fontSize: 16, fontWeight: '700' },
+  saveText: { fontSize: 16, fontFamily: F.bold },
+  pressed: { transform: [{ scale: 0.96 }] },
 });
