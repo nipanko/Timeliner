@@ -4,11 +4,20 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Current task:** Nipanko reviews branch `data/entries` (slice 3) before it merges to main
-- **Next:** slice 4 = complete / skip, XP ledger, HUD. Still open from slices 2–3: drag a card to reschedule; pinch zoom, fonts (Fredoka/Nunito), icons + mascot (needs react-native-svg). Phone orientation stays portrait; horizontal is a direction setting (owner didn't object). Confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
+- **Where the code is:** `main` has scaffold + slices 1–2. Slice 3 is on branch `data/entries` (checked out), not merged yet. 38 tests, typecheck and lint green.
+- **Resume with:** (1) Nipanko tests slice 3 on the phone (`npx expo start`, Expo Go) or says merge; (2) merge `data/entries` into main; (3) start slice 4.
+- **Slice 4 (proposed smaller, awaiting OK):** mark done / undo on a card; XP + level computed from entries in `src/core/game` (no `xp_events` table yet: add it when focus sessions, breaks or league need it); "skipped" derived (past + not done) and drawn as a grey gap; level/XP/streak header. Update ARCHITECTURE.md §5 when agreed.
+- **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; fonts (Fredoka/Nunito); icons + mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
+- **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
+- **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-30 (8) — end of day
+- Day summary: from an idea to a working local timeline app. Docs (architecture, research, clay design, product decisions), interactive design canvas v0.2 (https://claude.ai/artifact/ABND6k1WXFuxPjKUE6JusJ), scaffold, slices 1–3.
+- Learned: test the timeline maths in a DST time zone; SQLite on web needs isolation headers and an async open; the React Compiler lint rejects `Date.now()` during render (use a state initializer or `useNow`); a 6-hour tick slot can contain a DST change.
+- Proposed a smaller slice 4 (no XP ledger table yet); waiting for Nipanko's OK.
+
 ### 2026-10-30 (7)
 - Slice 2 merged into main.
 - Branch `data/entries` (slice 3): expo-sqlite + Drizzle (layers, entries; migrations in `src/db/migrations`, starter layers seeded by a migration). Tap empty timeline → add sheet (kind, title, when with ‹ › and Time/Day/Week/Month/Year, length, layer, plan sentence); tap a card → edit / delete (two taps); + button adds at the next slot; layer visibility saved. Sample data removed.
