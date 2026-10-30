@@ -1,75 +1,96 @@
-# TIMELINER — UI design v0.1
+# TIMELINER — UI design v0.2 ("clay")
 
 **Interactive canvas:** https://claude.ai/artifact/ABND6k1WXFuxPjKUE6JusJ (private; press Play on a board to use it).
-Boards: Timeline (vertical, live) · Night theme · Add to timeline · Focus mode · End-of-day review · Horizontal.
+Boards: Timeline (vertical, live) · Night · Add · Focus · Review · Journey (milestones + badges) · League (leaderboard) · Horizontal · Web dashboard.
 
 The canvas prototype is a throwaway design file, not app code. The real components follow `ARCHITECTURE.md`.
 
 ## 1. Visual language
-- **Mood:** cozy desk. Warm cream ground, pastel layer colors, rounded pills, chunky 44 px touch targets. Night theme: deep purple.
-- **Fonts:** Fredoka (titles, numbers, level) + Nunito (everything else). Both are free Google Fonts (OFL); bundle them with `expo-font`.
-- **No emoji in UI.** Simple stroke icons.
+- **Look: soft 3D "clay"** (main reference: the Bee-Bot board). Warm sand ground, cream panels that look pressed out of clay, chunky rounded tiles, sticky notes, a purple "selected" state, cute mascots.
+- **For everyone, fun for Gen Z:** playful but never childish. Big friendly numbers, stickers and mascots, streak flame, confetti; the same screens stay calm and readable for older users (calm mode turns the extras down).
+- **Fonts:** Fredoka (titles, numbers, levels) + Nunito 700–900 (everything else). Free Google Fonts (OFL); bundle with `expo-font`.
+- **No emoji in UI.** Simple stroke icons and mascot art.
 
 ### Color tokens
 | Token | Light | Night |
 |---|---|---|
-| ground | `#F4EEE2` | `#231D45` |
-| surface | `#FFFBF3` | `#2F2860` |
-| ink | `#1F1A2E` | `#F4F1FF` |
-| muted | `#625B70` | `#BDB5E0` |
-| line / lineStrong | `#E9E0CF` / `#C9BCA4` | white 10 % / 30 % |
-| chip | `#EAE2D2` | `#3D3574` |
-| accent (now-line, active) | `#C2410C` | `#FFB86B` |
+| ground | `#E9DCC9` | `#211B36` |
+| panel (raised clay) | `#F7F0E5` | `#2E2650` |
+| tray (pressed-in surface) | `#FCF8F2` | `#362D5C` |
+| ink | `#3B2F28` | `#F5F0FF` |
+| muted (only on panel / tray) | `#73635A` | `#C3B8E6` |
+| chip | `#EFE5D6` | `#3E3468` |
+| accent (selected, now-line) | `#6A55D8` | `#B7A6FF` |
+| action (big + button, CTA) | `#F07A2E` | `#F07A2E` |
 
-### Layer colors (fill / text)
-Work `#F6D365 / #3D3000` · Study `#B3CCF5 / #10284F` · Health `#B9D99D / #1F3A0C` · Life `#F6C0D8 / #561233`.
-Users can pick their own later; text on every fill must stay ≥ 4.5 : 1.
+### Clay recipe (the whole look is 3 shadows)
+- **Raised:** `0 8px 18px rgba(110,80,50,.18)` + inner top highlight `inset 0 2px 0 rgba(255,255,255,.8)` + inner bottom shade `inset 0 -3px 0 rgba(110,80,50,.10)`.
+- **Pressed-in tray:** `inset 0 3px 10px rgba(110,80,50,.14)`.
+- **Selected:** accent fill + raised shadow tinted purple. On press everything sinks 2 px and scales to 96 %.
+- Radii: tiles 18–22, panels 24–28, chips full pill.
 
-### Entry kinds
-| Kind | Icon | Shape on timeline |
+### Layer colors (fill / text / strong line)
+Work `#F8DE84 / #4A3A00 / #D9A520` · Study `#CDBDF4 / #2F2160 / #8C73E0` · Health `#B9D79C / #24410E / #6E9E45` · Life `#F5AE97 / #5A1D0E / #E0735C`. Text on every fill stays ≥ 4.5 : 1.
+
+### Mascot: "Tick"
+An orange clay blob with a sprout. It rides the now-line, walks the day's path in Focus, jumps on completions and cheers in the web activity feed. Other players appear as colored blob variants. Final art later in Rive (PLAN.md).
+
+### Entry kinds and states
+Unchanged from v0.1: Task (timer, a block), Todo (checkbox pill), Note (pencil pill), Reminder (bell pill). Planned = pastel clay; Active = breathing purple ring + progress bar; Done = check, faded; Skipped = dashed neutral gap; Past = soft veil.
+
+## 2. Motion system
+Motion must feel **juicy but cheap**: only `transform` and `opacity` animate, so it stays 60 fps on low-end Android and on the web.
+
+| Moment | Animation | Duration / curve |
 |---|---|---|
-| Task (time block) | timer | card from start to end, focus-able |
-| Todo | checkbox | pill at a time |
-| Note | pencil | pill at a moment |
-| Reminder | bell | pill at a moment + notification |
+| Any press | sink 2 px, scale 0.96 | 120 ms ease |
+| Card completed | pop (1 → 1.08 → 0.97 → 1) + toast drops in + 8-piece confetti + mascot jump + haptic | 450 ms; toast 320 ms overshoot |
+| Level up | dim + card scales in with overshoot + mascot bounces + confetti | 500 ms, auto-stays until tapped |
+| Now-line | flows continuously; clock pill pulses | pulse 1.8 s loop |
+| Active task | ring "breathes" | 2 s loop |
+| Mascot idle | bob 3 px | 2.4 s loop |
+| Streak flame | flicker | 1.6 s loop |
+| Zoom change | timeline content fades/scales in | 350 ms |
+| Sheets | slide up with slight overshoot | 340 ms |
+| Lists (league, feed, badges) | stagger rise / slide, 50–60 ms apart | 400 ms each |
+| Progress bars, XP | width eases with a tiny overshoot | 600–1200 ms |
+| Journey graph | branches draw in, future stays dashed | 700–800 ms |
+| Break | breathing circle (4 s in / 4 s out) | 8 s loop |
+| Badges | shine sweep across unlocked coins | 3.2 s loop, staggered |
 
-### Entry states
-- **Planned:** pastel fill.
-- **Active:** accent ring + progress bar filling along the bottom.
-- **Done:** check icon, faded.
-- **Skipped:** dashed outline, a neutral "gap". Never red (RESEARCH.md #10).
-- **Past:** everything before the now-line sits under a soft veil; the future stays bright.
+- **Reduce motion** (system setting) turns all loops and confetti off; the now-line steps once a second.
+- **Calm mode** (in-app) keeps motion but removes confetti, sounds and league prompts.
 
-## 2. Screens
-1. **Timeline (home).** Date + greeting · HUD (level, XP bar, streak, freezes) · Day / Week / Month / Year progress bars · zoom bar (Sec → Year) · layer chips · timeline area (lane headers with today's progress or the current long goal, time gutter with ticks, lanes, live now-line with a ticking clock pill and the character riding it) · tab bar (Timeline, Focus, Review, +).
-2. **Add sheet.** Opens from a tap on the timeline (time and lane pre-filled, snapped to the zoom) or from +. Kind, title, time scale (Time / Hour / Day / Week / Month / Year), length, layer, reminder, optional treat. Shows the plan as a sentence ("At 3:45 PM today, in Work, I will …"). Month and year goals add the obstacle + if-then fields (WOOP).
-3. **Focus.** One task only: ring countdown, today's path with the character moving forward, treat, "park a thought" into Inbox, Pause / Done, then a suggested 5-minute break.
-4. **Review.** Stats, the path you walked (gaps shown neutrally, with "move to tomorrow"), plan vs. actual with a padding suggestion, tomorrow's first task, and it **ends on the best moment**.
-5. **Directions and themes.** Same timeline running down, up, right or left; light and night.
+## 3. Screens
+1. **Timeline (home).** Greeting + date · HUD (mascot with level badge, XP bar, streak flame, league rank chip) · Day/Week/Month/Year bars (tap → Review) · zoom toolbar (Sec → Year) · layer chips · timeline tray (lane headers, ticks, lanes, live now-line, Tick) · dock: Timeline, Focus, big +, Journey, League.
+2. **Add sheet.** Kind tiles, title, time scale, length, layer, reminder, treat, WOOP fields for month/year goals; the plan shown as a tilted sticky note.
+3. **Focus.** Clay ring countdown, today's path with Tick walking, treat, park-a-thought into Inbox, confetti on Done, then a breathing break.
+4. **Review.** Count-up stat tiles, path with gaps, plan vs. actual, tomorrow's first task (sticky), ends on the best moment.
+5. **Journey.** Git-style graph: your life is the trunk, each goal is a branch, milestones are stops, finished goals merge back. Tap a stop for details; "Mark reached" celebrates. Badges tab: streak (3/7/14/30/66 days), focus hours, honest planner, early bird, comeback, fresh start, party.
+6. **League.** Weekly league (podium + list), Friends (cheer), Party (co-op quest). Rules in `RESEARCH.md` #16, #22.
+7. **Web dashboard.** Bee-Bot layout: goals sidebar · tool bar · sticky notes (quests, up next) + "now playing" card · stat tiles · the same live timeline in horizontal lanes · quick-capture bar · live activity feed · dock of clay tiles. Wraps into one column on a phone-width browser.
 
-## 3. Interactions
+## 4. Interactions
 | Gesture | Result |
 |---|---|
-| Tap empty spot | Add sheet at that time and lane |
-| Tap card | Card actions: start focus / done / edit (prototype: toggles done) |
+| Tap empty spot on timeline | Add sheet at that time and lane |
+| Tap card | Card actions (prototype: complete / undo) |
 | Drag / scroll | Travel in time; "Back to now" returns to live follow |
-| Pinch | Zoom smoothly between Sec and Year (prototype uses chips) |
+| Pinch | Zoom smoothly Sec ↔ Year (prototype uses the zoom toolbar) |
 | Long-press card, drag | Reschedule (later slice) |
-| Complete | Haptic tick + "+XP" toast; character steps forward |
+| Web: type in the capture bar | Goes to Inbox; natural-language time parsing later |
 
-## 4. Accessibility
-- Every card is a button with a full label: "Task, Code review, 2:00–2:30 PM, skipped".
-- Respect system font size; layouts must not clip at 130 %.
-- "Reduce motion": the now-line steps once a second instead of flowing.
-- Color is never the only signal: kind icons and text always come with it.
-- Keyboard and screen-reader path to add an entry: the + button (no gesture needed).
+## 5. Accessibility
+- Every card is a button with a full label ("Task, Code review, 2:00–2:30 PM, skipped").
+- Touch targets ≥ 44 px; system font scaling up to 130 % without clipping.
+- Reduce motion respected everywhere (§2).
+- Color is never the only signal: icons, text and position come with it.
+- The + button gives a no-gesture path to add anything.
 
-## 5. Where the references went
+## 6. Where the references went
 | Reference | Taken |
 |---|---|
-| Purple vertical timeline (pill cards, colored icon nodes) | Night theme, pill-shaped point entries, kind icons |
-| "Bee-Bot OS" board (git-branch lanes, soft clay buttons) | Layers as parallel lanes, chunky rounded controls |
-| "Intelly" dashboard (today's timeline, time pill on a current-time line, faded past, pastel tiles) | Now-line + clock pill, past veil, pastel palette, Review tiles |
-| Classic alternating timeline (icon circles, tags) | Single-layer view = centered spine; layer tags |
-
-Plus app patterns listed in `RESEARCH.md` §2.
+| Bee-Bot board (clay panels, purple selected tool, sticky notes, git-branch progress, activity feed, chunky dock, mascots) | The whole v0.2 look; Journey graph; web dashboard layout; live activity; dock |
+| Purple vertical timeline | Night theme, pill entries, kind icons |
+| "Intelly" dashboard | Now-line + clock pill, past veil, pastel stat tiles |
+| Classic alternating timeline | Single-layer view = centered spine; tags |

@@ -6,7 +6,8 @@
 Your day is a **timeline you play**. Plan it as blocks, live it as a run: finishing blocks moves your character forward through a world. Streaks build your world, and skipped blocks leave visible gaps.
 
 ## Who it's for
-- [ ] Primary user: _(students? indie devs? remote workers? me first)_
+- [x] **Everyone** who plans their time, with a look and game layer made to feel fun for **Gen Z** (Nipanko, 30 Oct). Calm mode for people who want less game.
+- [ ] **Minimum age:** India's DPDP Act needs verifiable parental consent for under-18s, and the league shows players to each other. Proposal: 18+ at launch, or 13+ with parental consent and no league for minors. Decide before Phase 2.
 - Me (Nipanko): I plan game-dev days, study time, and Storybook/Tried Indie work.
 
 ## Core loop (draft)
@@ -32,13 +33,16 @@ Your day is a **timeline you play**. Plan it as blocks, live it as a run: finish
 - [ ] Focus timer per task + notification when done; reminders as notifications
 - [ ] Character moves along the timeline; XP + level (rules in ARCHITECTURE.md §5)
 - [ ] Forgiving daily streak (freezes) + end-of-day review
+- [ ] **Journey:** goals as branches with milestone stops; badges (streaks, focus hours, honest planner, comeback…)
+- [ ] **Clay look + smooth, fun animations** on phone and web (DESIGN.md §1–2); calm mode and reduce-motion respected
 - [ ] Works offline, data stored on device
 
 ## Later (not in MVP)
 - Accounts + sync across phone and web (Supabase)
 - Web dashboard: weekly/monthly stats, plan the week on a big screen
 - **Pro** subscription: unlimited history, themes/worlds, sync, stats
-- Calendar import, home-screen widgets, co-op "party" timelines with friends
+- **League (Phase 2, needs accounts):** weekly leagues of similar players, friends + cheers, co-op party quests. Rules in RESEARCH.md #16, #22.
+- Calendar import, home-screen widgets
 - Round "clock" view of the timeline, recurring entries, subtasks, search, priorities/tags
 - Inbox lane for quick capture ("park a thought" in focus mode)
 

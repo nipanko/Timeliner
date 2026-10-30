@@ -51,6 +51,8 @@ src/
     game/xp.ts                XP per event
     game/levels.ts            level curve
     game/streaks.ts           forgiving streak + freezes
+    game/milestones.ts        goal progress, next milestone, merge-back
+    game/badges.ts            badge rules → which badges are earned (pure)
   db/
     schema.ts                 Drizzle tables (§3)
     client.ts                 opens SQLite, runs migrations
@@ -74,10 +76,13 @@ All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a who
 | Table | Columns | Notes |
 |---|---|---|
 | `layers` | `id`, `name`, `color`, `icon`, `sort`, `visible`, `createdAt`, `updatedAt` | A lane on the timeline (Work, Study, Health…). |
-| `entries` | `id`, `layerId`, `kind` (`task` \| `todo` \| `note` \| `reminder`), `title`, `body?`, `startAt`, `endAt?`, `granularity` (`moment` \| `minute` \| `hour` \| `day` \| `week` \| `month` \| `year`), `tz`, `status` (`planned` \| `done` \| `cancelled`), `doneAt?`, `remindOffsetsMin` (JSON int[]), `treat?`, `createdAt`, `updatedAt` | Tasks have `endAt` (a time block). Todos, notes and reminders are points (`endAt` null). A month goal = task with `granularity: month`, start/end at month edges. |
+| `entries` | `id`, `layerId`, `goalId?` (a milestone's parent goal), `kind` (`task` \| `todo` \| `note` \| `reminder` \| `milestone`), `title`, `body?`, `startAt`, `endAt?`, `granularity` (`moment` \| `minute` \| `hour` \| `day` \| `week` \| `month` \| `year`), `tz`, `status` (`planned` \| `done` \| `cancelled`), `doneAt?`, `remindOffsetsMin` (JSON int[]), `treat?`, `createdAt`, `updatedAt` | Tasks have `endAt` (a time block). Todos, notes and reminders are points (`endAt` null). A month goal = task with `granularity: month`, start/end at month edges. |
 | `focus_sessions` | `id`, `entryId`, `startedAt`, `endedAt?`, `pausedMs`, `outcome?` (`done` \| `stopped`) | Actual time for planned-vs-actual. |
 | `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | Append-only ledger. Level and totals are sums. Undo = delete the row. |
 | `day_logs` | `day` (local `YYYY-MM-DD`), `reviewedAt?`, `freezeUsed` | Streak and review bookkeeping. |
+| `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | Badge rules live in code (`core/game/badges.ts`); we store only *when* each was earned, so the celebration plays exactly once (`seenAt`). |
+
+A **goal** is a long task (`granularity` month or year). Its **milestones** are `kind: milestone` entries with `goalId` set; on the Journey screen the goal is a branch and the milestones are its stops. The goal "merges back" when it is done.
 
 - **IDs are UUID strings** (`expo-crypto` `randomUUID`), so rows made offline on two devices can merge when sync arrives in Phase 2.
 - **Index** `entries(startAt)` and `entries(layerId, startAt)`.
@@ -185,6 +190,7 @@ Add a store only if passing props becomes painful.
 | `expo-haptics` | completion feedback | 4 |
 | `expo-notifications` | reminders, task end | 5 |
 | `@shopify/react-native-skia` | only if Views are too slow | — |
+| `rive-react-native` | mascot animation (needs a dev build; check the name and SDK fit first) | later |
 
 Already installed: Reanimated, Gesture Handler, Expo Router.
 
@@ -195,9 +201,28 @@ Already installed: Reanimated, Gesture Handler, Expo Router.
 4. Complete / skip, XP ledger, HUD.
 5. Focus mode + notifications.
 6. Review + streaks.
-7. Layer management + settings (direction, week start).
+7. Journey: goals, milestones, badges.
+8. Layer management + settings (direction, week start, calm mode).
+9. Motion polish pass (§11) on a low-end Android phone and the web build.
 
 ## 10. Later (Phase 2+)
 - Supabase sync: same tables + `userId`, Row Level Security, `deletedAt` for soft deletes, last write wins on `updatedAt`.
-- Web dashboard: same app built for web, horizontal direction by default.
-- Radial clock view, recurring entries, widgets, calendar import.
+- Web dashboard: same app built for web, horizontal direction by default (layout in DESIGN.md §3.7).
+- League (§12), radial clock view, recurring entries, widgets, calendar import.
+
+## 11. Motion that stays smooth on every device
+Look and timings: DESIGN.md §2. How we build it:
+- **One code path for phone and web.** Reanimated 4 runs animations on the UI thread on iOS/Android and in the browser on web. Simple effects (press, pop, toast, sheet, list stagger) use its CSS-style animations and transitions; gesture-driven motion (pan, pinch, the flowing now-line) uses shared values + worklets. Read the Reanimated docs for the installed version before the first animation slice.
+- **Only `transform` and `opacity` animate.** No animating width/height/top on the UI thread; progress bars use `scaleX`.
+- **Celebrations are data-driven.** `core` returns events (`level_up`, `milestone_reached`, `badge_unlocked`); the UI maps each event to an animation + `expo-haptics` pattern. Same rule as everything else: UI shows, core decides.
+- **Budget:** 60 fps on a low-end Android phone (test device to pick in Phase 1). At most ~12 confetti pieces; loops pause when the screen is not visible.
+- **Reduce motion** (`useReducedMotion`) and in-app **calm mode** switch loops and confetti off.
+- **Mascot:** SVG + Reanimated for the MVP; Rive later for richer character animation.
+
+## 12. League (Phase 2, needs accounts)
+Rules and why: RESEARCH.md #16, #22.
+- **Tables (Supabase):** `profiles` (`userId`, `nickname`, `mascot`, `leagueOptIn`), `leagues` (`id`, `tier`, `weekStart`), `league_members` (`leagueId`, `userId`), `weekly_scores` (`userId`, `weekStart`, `xp`), `friendships`, `parties` + `party_members`, `cheers`.
+- **Score:** only focus XP counts, max 300 a day. The app sends XP events; an **Edge Function** checks them (cap, plausible focus time, no future timestamps) before adding to `weekly_scores`. The client can never write a score directly.
+- **Privacy (RLS):** a user can read only nickname, mascot and weekly XP of people in the same league, friends and party. Task titles, notes and layers never leave the device for the league.
+- **Weekly job:** Monday 00:00 (user's league time zone) close the week, move the top 5 up a tier, nobody moves down, form new groups of ~25 at similar levels.
+- **Opt-in** and leave any time. Minors: see the age decision in PRODUCT.md.

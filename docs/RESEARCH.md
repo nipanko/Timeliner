@@ -23,11 +23,13 @@ Evidence strength: ●●● meta-analysis or widely replicated · ●● solid 
 | 13 | **Self-determination theory.** Lasting motivation needs autonomy, competence and relatedness; good games feed all three. | Ryan, Rigby & Przybylski 2006 ●●; Deci & Ryan 2000 ●●● | Autonomy: user picks layers, zoom, direction and their own treats. Competence: levels and per-layer skill. Relatedness: party timelines with friends (later). |
 | 14 | **Overjustification.** Expected, tangible rewards can lower intrinsic motivation; informational feedback does not. | Deci, Koestner & Ryan 1999, meta-analysis ●●● | XP is *feedback* ("you focused 3 h today"), not payment. Rewards are cosmetic world growth. No paywalled rewards. |
 | 15 | **Gamification works, modestly, and depends on design.** | Hamari, Koivisto & Sarsa 2014 ●●; Sailer & Homner 2020, meta-analysis: cognitive g ≈ 0.49, motivational g ≈ 0.36, behavioural g ≈ 0.25 ●●● | The game is a layer over a good planner, never a replacement. A "calm mode" turns the game layer down. |
-| 16 | **Leaderboards can backfire.** A class with badges and leaderboards showed lower intrinsic motivation and exam scores. | Hanus & Fox 2015 ●● | No public leaderboards. Co-op party goals instead of competition. |
+| 16 | **Leaderboards can backfire.** A class with badges and leaderboards showed lower intrinsic motivation and exam scores. | Hanus & Fox 2015 ●● | Leaderboard only in the safe form (see #22): opt-in, small weekly leagues, effort-based score, no demotion, plus co-op party goals. |
 | 17 | **Temptation bundling.** Pairing a "want" with a "should" increases the "should". | Milkman, Minson & Volpp 2014 ●● | Optional "treat" on a task (podcast, playlist, coffee), shown when the task starts. |
 | 18 | **Mental contrasting (WOOP).** Imagining the obstacle plus an if-then plan beats positive thinking alone for big goals. | Oettingen 2014; Duckworth et al. 2011 ●● | Month and year goals use a four-field form: Wish, Outcome, Obstacle, Plan. |
 | 19 | **Peak-end rule.** We judge an experience by its peak and its end. | Kahneman et al. 1993 ●● | The end-of-day Review ends on the day's best moment, never on a list of misses. |
 | 20 | **Seeing time pass** helps time awareness, especially with ADHD. | Visual timers are standard ADHD support; evidence is mostly practice-based ● | The live, flowing now-line and filling progress bars are the core UI, not an extra. |
+| 21 | **Near subgoals beat distant goals.** Breaking a far goal into close steps raised performance, self-efficacy and interest. | Bandura & Schunk 1981 ●● | Journey: every goal is a branch with milestone stops; each stop is celebrated and rewarded. |
+| 22 | **Social comparison motivates when the others are similar and the gap feels closable.** Comparing with people far ahead or far behind does not. | Festinger 1954 ●●●; Hanus & Fox 2015 ●● | Leagues of ~20–30 players at a similar level, reset every Monday (fresh start, #12). Show "+65 XP to pass the next person", not a global top-1000. Top 5 move up; nobody moves down (#10). Score = focus XP with a daily cap, so grinding and fake tasks don't win. Opt-in, nickname + mascot only. |
 
 ## 2. Popular apps: what to borrow, what to avoid
 
@@ -54,7 +56,7 @@ Evidence strength: ●●● meta-analysis or widely replicated · ●● solid 
 - **Loot boxes or random paid rewards.** Gambling-like. Pro sells convenience and cosmetics only.
 - **Rewarding task count.** People farm tiny fake tasks. We reward planned time completed and good estimates, and cap planning XP per day.
 - **Notification spam.** At most one nudge per day that the user did not set up themselves.
-- **Public comparison** (#16).
+- **Global, all-time leaderboards** or demotion zones (#16, #22). Only the weekly league format above.
 
 ## 4. How we check it works (own data, anonymous)
 - **Follow-through:** % of planned tasks completed, per week.
@@ -67,12 +69,14 @@ Counts and ratios only. Never titles, notes or other personal content (see priva
 ## References
 - Albulescu, P. et al. (2022). "Give me a break!" A systematic review and meta-analysis on the efficacy of micro-breaks. *PLOS ONE*.
 - Amabile, T. & Kramer, S. (2011). *The Progress Principle*. Harvard Business Review Press.
+- Bandura, A. & Schunk, D. (1981). Cultivating competence, self-efficacy, and intrinsic interest through proximal self-motivation. *Journal of Personality and Social Psychology*.
 - Biwer, F. et al. (2023). Understanding effort regulation: Comparing "Pomodoro" breaks and self-regulated breaks. *British Journal of Educational Psychology*.
 - Buehler, R., Griffin, D. & Ross, M. (1994). Exploring the "planning fallacy". *Journal of Personality and Social Psychology*.
 - Dai, H., Milkman, K. & Riis, J. (2014). The fresh start effect. *Management Science*.
 - Deci, E., Koestner, R. & Ryan, R. (1999). A meta-analytic review of experiments examining the effects of extrinsic rewards on intrinsic motivation. *Psychological Bulletin*.
 - Deci, E. & Ryan, R. (2000). The "what" and "why" of goal pursuits. *Psychological Inquiry*.
 - Duckworth, A. et al. (2011). Self-regulation strategies improve self-discipline in adolescents. *Educational Psychology*.
+- Festinger, L. (1954). A theory of social comparison processes. *Human Relations*.
 - Gollwitzer, P. & Sheeran, P. (2006). Implementation intentions and goal achievement: A meta-analysis. *Advances in Experimental Social Psychology*.
 - Hamari, J., Koivisto, J. & Sarsa, H. (2014). Does gamification work? *HICSS*.
 - Hanus, M. & Fox, J. (2015). Assessing the effects of gamification in the classroom. *Computers & Education*.
