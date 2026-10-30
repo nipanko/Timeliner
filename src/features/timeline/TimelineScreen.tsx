@@ -18,6 +18,7 @@ import { usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { TimelineView } from './TimelineView';
+import { WeekStrip } from './WeekStrip';
 
 const ZOOM_LABELS: Record<ScaleId, string> = { sec: 'Sec', min: 'Min', hour: 'Hour', day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 const PERIODS: [string, Period][] = [['DAY', 'day'], ['WEEK', 'week'], ['MONTH', 'month'], ['YEAR', 'year']];
@@ -30,6 +31,7 @@ export function TimelineScreen() {
   const now = useNow(10_000);
   const [scaleId, setScaleId] = useState<ScaleId>('hour');
   const [direction, setDirection] = useState<Direction>('down');
+  const [weekShift, setWeekShift] = useState(0);
   const allLayers = useLayers();
   const entries = useEntries();
   const anchorTime = useSharedValue(now);
@@ -44,7 +46,9 @@ export function TimelineScreen() {
   }, [entries]);
 
   const today = floorUnit(now, 'day');
-  const week = Array.from({ length: 7 }, (_, i) => addUnit(floorUnit(now, 'week'), 'day', i));
+  const weekStart = addUnit(floorUnit(now, 'week'), 'week', weekShift);
+  // The title follows the week in the strip (its Thursday decides the month).
+  const shown = weekShift ? addUnit(weekStart, 'day', 3) : now;
   const colorById = new Map(allLayers.map((l) => [l.id, l.color.fill]));
   const dotsFor = (day: number) => {
     const next = addUnit(day, 'day', 1);
@@ -78,8 +82,21 @@ export function TimelineScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text numberOfLines={1} style={[styles.month, { color: c.ink }]} accessibilityRole="header">
-            {new Date(now).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accentText }}>{new Date(now).getFullYear()}</Text>
+            {new Date(shown).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accentText }}>{new Date(shown).getFullYear()}</Text>
           </Text>
+          {weekShift !== 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to this week"
+              onPress={() => {
+                setWeekShift(0);
+                jumpTo(today);
+              }}
+              style={({ pressed }) => [styles.todayPill, { backgroundColor: c.chip, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+            >
+              <Text style={[styles.todayText, { color: c.ink }]}>Today</Text>
+            </Pressable>
+          )}
           <Pressable
             onPress={() => router.push('/journey')}
             accessibilityRole="button"
@@ -100,30 +117,7 @@ export function TimelineScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.week}>
-          {week.map((day) => {
-            const isToday = day === today;
-            return (
-              <Pressable
-                key={day}
-                accessibilityRole="button"
-                accessibilityLabel={`Go to ${new Date(day).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}`}
-                onPress={() => jumpTo(day)}
-                style={({ pressed }) => [styles.day, pressed && styles.pressed]}
-              >
-                <Text style={[styles.weekday, { color: c.muted }]}>{new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}</Text>
-                <View style={[styles.dayNum, isToday && { backgroundColor: c.accent, boxShadow: c.glow }]}>
-                  <Text style={[styles.dayText, { color: isToday ? c.accentInk : c.ink }]}>{new Date(day).getDate()}</Text>
-                </View>
-                <View style={styles.dots}>
-                  {dotsFor(day).map((color) => (
-                    <View key={color} style={[styles.dot, { backgroundColor: color }]} />
-                  ))}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+        <WeekStrip weekStart={weekStart} today={today} onShift={(n) => setWeekShift((w) => w + n)} onPick={jumpTo} dotsFor={dotsFor} />
 
         <Pressable accessibilityRole="button" accessibilityLabel="Open today's review" onPress={() => router.push('/review')} style={[styles.complications, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           {PERIODS.map(([label, period]) => {
@@ -224,6 +218,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, gap: 10 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   month: { flexShrink: 1, fontSize: 26, fontFamily: F.display, letterSpacing: -0.6 },
+  todayPill: { height: 30, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center' },
+  todayText: { fontSize: 12.5, fontFamily: F.bold },
   hud: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 12, borderRadius: 14 },
   lv: { fontSize: 14, fontFamily: F.display, letterSpacing: 0.5 },
   xpCol: { width: 62, gap: 3 },
@@ -232,13 +228,6 @@ const styles = StyleSheet.create({
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   streak: { fontSize: 16, fontFamily: F.display, fontVariant: ['tabular-nums'] },
   micro: { fontSize: 10, fontFamily: F.semi, letterSpacing: 0.6, fontVariant: ['tabular-nums'] },
-  week: { flexDirection: 'row' },
-  day: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 2 },
-  weekday: { fontSize: 11, fontFamily: F.semi },
-  dayNum: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  dayText: { fontSize: 16, fontFamily: F.displaySemi, fontVariant: ['tabular-nums'] },
-  dots: { flexDirection: 'row', gap: 2, height: 5 },
-  dot: { width: 5, height: 5, borderRadius: 3 },
   complications: { flexDirection: 'row', gap: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14 },
   complication: { flex: 1, gap: 4 },
   compText: { flexDirection: 'row', justifyContent: 'space-between' },

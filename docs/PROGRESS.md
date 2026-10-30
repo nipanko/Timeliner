@@ -12,6 +12,9 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (7)
+- Week strip swipes left/right through weeks without end (only 3 weeks rendered; recentres after each swipe). Tapping a day still jumps the timeline; the release at the end of a swipe no longer counts as a tap. Month title follows the shown week; a Today pill returns to this week. Checked on the web build with mouse drags both ways.
+
 ### 2026-10-31 (6)
 - "Tweak the look" on `ui/pro-look`, from Nipanko's picks: lime accent with a lime → mint gradient for rewards and primary buttons; Space Grotesk + Inter fonts; Ionicons on tabs, cards (tasks wear their layer's icon), the add sheet and the focus screen; System / Light / Dark in a new Settings tab with a profile card (level, XP bar, streak, badges, hours focused); `settings` table (migration 0005).
 - Game juice: one Celebrations overlay driven by `core/game/events.ts` (+N XP toast with confetti, level-up card, badge toast, haptics on phones); spring on the check mark; press scale everywhere. Journey, Review and Settings are tabs now, with a large title that stretches on pull and hands over to a compact bar, and staggered section entrances. Focus: display-font timer, gradient progress, glowing dial while running. The tab bar's + adds at the next quarter hour.
