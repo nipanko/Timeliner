@@ -225,4 +225,5 @@ Rules and why: RESEARCH.md #16, #22.
 - **Score:** only focus XP counts, max 300 a day. The app sends XP events; an **Edge Function** checks them (cap, plausible focus time, no future timestamps) before adding to `weekly_scores`. The client can never write a score directly.
 - **Privacy (RLS):** a user can read only nickname, mascot and weekly XP of people in the same league, friends and party. Task titles, notes and layers never leave the device for the league.
 - **Weekly job:** Monday 00:00 (user's league time zone) close the week, move the top 5 up a tier, nobody moves down, form new groups of ~25 at similar levels.
-- **Opt-in** and leave any time. Minors: see the age decision in PRODUCT.md.
+- **Opt-in** and leave any time.
+- **Age (PRODUCT.md):** first run asks only the birth year (minimal data). Under 13: the app can't be used. 13–17: an account needs verifiable parental consent before sync; `profiles` stores `isMinor` and `parentConsentAt`, never the parent's details beyond what consent needs. Minor accounts get no League, Friends, Party or cheers (enforced by RLS, not just hidden in the UI), and no analytics events.

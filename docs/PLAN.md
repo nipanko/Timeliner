@@ -59,7 +59,7 @@ Godot is great for games, but TIMELINER is an **app first, game second**: text i
 - Sentry crash reporting + release tags; fix crashes before features.
 - Over-the-air JS updates with **EAS Update** for quick fixes (store rules still apply for native changes).
 - Accessibility: font scaling, screen-reader labels, colour contrast.
-- Privacy: collect the minimum. Account deletion in-app (both stores require it). Privacy policy + terms + refund policy. DPDP Act: no users under 18 unless parental consent is handled.
+- Privacy: collect the minimum. Account deletion in-app (both stores require it). Privacy policy + terms + refund policy. Minimum age 13. Ages 13–17 need verifiable parental consent (DPDP Act: under 18 = child), and get no social features, tracking or targeted ads. Play Console target audience: 13+ (no under-13 group, so no Families programme).
 - Version + changelog for every release.
 
 ## 6. Next steps (in order)

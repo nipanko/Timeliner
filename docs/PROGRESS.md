@@ -5,10 +5,13 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 0, concept & validation
 - **Current task:** Nipanko reviews the clay UI v0.2 canvas (Journey, League, web dashboard, animations)
-- **Next:** decide minimum age (PRODUCT.md); confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
+- **Next:** confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-30 (4)
+- Decided: minimum age 13; 13–17 with verifiable parental consent, no social features or analytics. Recorded in PRODUCT.md, PLAN.md §5, ARCHITECTURE.md §12.
+
 ### 2026-10-30 (3)
 - Owner asked for the Bee-Bot "clay" look everywhere, fun animations, all ages incl. Gen Z, milestone gameplay and a leaderboard, smooth on phone and web.
 - Canvas v0.2: rebuilt Timeline/Night/Horizontal, Add, Focus, Review in clay style with animations; new Journey (goal branches, milestones, badges), League (weekly league, friends, party) and Web dashboard boards.

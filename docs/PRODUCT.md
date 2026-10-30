@@ -7,7 +7,7 @@ Your day is a **timeline you play**. Plan it as blocks, live it as a run: finish
 
 ## Who it's for
 - [x] **Everyone** who plans their time, with a look and game layer made to feel fun for **Gen Z** (Nipanko, 30 Oct). Calm mode for people who want less game.
-- [ ] **Minimum age:** India's DPDP Act needs verifiable parental consent for under-18s, and the league shows players to each other. Proposal: 18+ at launch, or 13+ with parental consent and no league for minors. Decide before Phase 2.
+- [x] **Minimum age 13** (Nipanko, 30 Oct). Ages 13–17 need verifiable parental consent (India's DPDP Act counts everyone under 18 as a child). For 13–17: no League, Friends or Party; no analytics or behaviour tracking; no ads. Details: ARCHITECTURE.md §12, PLAN.md §5. *Check the exact consent method against the DPDP Rules before Phase 2. This note is not legal advice.*
 - Me (Nipanko): I plan game-dev days, study time, and Storybook/Tried Indie work.
 
 ## Core loop (draft)
