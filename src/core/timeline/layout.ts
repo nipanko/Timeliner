@@ -31,10 +31,23 @@ export const DOT_PX = 8;
 export const DOTS_FROM_SPAN = WEEK;
 const OFFSCREEN_MARGIN = 0.05;
 
+export type LayoutOptions = {
+  /** Also lay out this many screens before and after the view, so dragging never shows an empty edge. */
+  buffer?: number;
+  /** Length of a moment's pill along the axis (horizontal timelines use a wider pill). */
+  pillPx?: number;
+};
+
 /** Positions every visible entry in visible `lanes` (layer ids, in display order) for an axis `axisPx` long. */
-export function layoutTimeline(entries: readonly TimelineEntry[], lanes: readonly string[], v: Viewport, axisPx: number): PlacedItem[] {
+export function layoutTimeline(
+  entries: readonly TimelineEntry[],
+  lanes: readonly string[],
+  v: Viewport,
+  axisPx: number,
+  { buffer = 0, pillPx = PILL_PX }: LayoutOptions = {},
+): PlacedItem[] {
   const { start: viewStart, end: viewEnd } = visibleRange(v);
-  const margin = OFFSCREEN_MARGIN * v.span;
+  const margin = Math.max(OFFSCREEN_MARGIN, buffer) * v.span;
   const frac = (px: number) => px / axisPx;
   const placed: PlacedItem[] = [];
 
@@ -50,13 +63,13 @@ export function layoutTimeline(entries: readonly TimelineEntry[], lanes: readonl
     let shape: Shape;
     if (e.end === null) {
       shape = v.span >= DOTS_FROM_SPAN ? 'dot' : 'pill';
-      const half = frac(shape === 'dot' ? DOT_PX : PILL_PX) / 2;
+      const half = frac(shape === 'dot' ? DOT_PX : pillPx) / 2;
       lo -= half;
       hi += half;
     } else if (e.end - e.start > BAND_RATIO * v.span) {
       shape = 'band';
-      lo = Math.max(lo, 0);
-      hi = Math.min(hi, 1);
+      lo = Math.max(lo, -buffer);
+      hi = Math.min(hi, 1 + buffer);
     } else {
       shape = (hi - lo) * axisPx < COMPACT_BELOW_PX ? 'compact' : 'card';
       hi = Math.max(hi, lo + frac(shape === 'card' ? CARD_MIN_PX : COMPACT_MIN_PX));

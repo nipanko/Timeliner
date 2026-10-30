@@ -23,7 +23,8 @@ describe('layoutTimeline', () => {
     expect(items.hour.pos).toBeCloseTo(0.3);
     expect(items.hour.size).toBeCloseTo(0.1);
     expect(items.short.shape).toBe('compact');
-    expect(items.goal).toMatchObject({ shape: 'band', pos: 0, size: 1 });
+    expect(items.goal).toMatchObject({ shape: 'band', size: 1 });
+    expect(items.goal.pos).toBeCloseTo(0);
     expect(items.note.shape).toBe('pill');
     expect(items.note.pos).toBeCloseTo(0.3 - 15 / AXIS);
   });
@@ -33,9 +34,23 @@ describe('layoutTimeline', () => {
     expect(item.shape).toBe('dot');
   });
 
+  it('uses the given pill length', () => {
+    const [item] = layoutTimeline([moment('note', 0)], ['work'], view, AXIS, { pillPx: 128 });
+    expect(item.size).toBeCloseTo(128 / AXIS);
+  });
+
   it('skips entries that are off screen or on hidden layers', () => {
     const items = layoutTimeline([task('tomorrow', 24 * 60, 25 * 60), task('hidden', 0, 60, 'life')], ['work'], view, AXIS);
     expect(items).toEqual([]);
+  });
+
+  it('also lays out a buffer of screens around the view', () => {
+    const items = byId(layoutTimeline([
+      task('later', 12 * 60, 13 * 60),
+      { id: 'goal', layerId: 'work', start: now - 3 * DAY, end: now + 3 * DAY },
+    ], ['work'], view, AXIS, { buffer: 1 }));
+    expect(items.later.pos).toBeCloseTo(1.5);
+    expect(items.goal).toMatchObject({ shape: 'band', pos: -1, size: 3 });
   });
 
   it('places overlapping items side by side, per lane', () => {

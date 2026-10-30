@@ -4,11 +4,17 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Current task:** Nipanko reviews branches `scaffold` and `core/time-timeline` (stacked) before they merge to main
-- **Next:** slice 2 = read-only Timeline screen (ticks, now-line, zoom bar, directions, sample data) on Reanimated + Gesture Handler; confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
+- **Current task:** Nipanko reviews branch `ui/timeline-screen` (slice 2) before it merges to main
+- **Next:** slice 3 = SQLite + entries + add sheet (tap the timeline to add). Still open from slice 2: pinch zoom, fonts (Fredoka/Nunito), icons + mascot (needs react-native-svg). Phone orientation stays portrait; horizontal is a direction setting (owner didn't object). Confirm "what makes it different"; check the name (Play Store, App Store, IP India), buy domain; commit the Expo scaffold (branch `scaffold`, still uncommitted); then Phase 1 slice 1 = `src/core/time` + `src/core/timeline` with Jest tests (ARCHITECTURE.md §9)
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-30 (6)
+- Scaffold + slice 1 merged into main.
+- Branch `ui/timeline-screen` (slice 2): read-only Timeline screen with sample data. Live now-line flowing on the UI thread (Reanimated frame callback), drag with momentum (Gesture Handler 3 `usePanGesture`), Back to now, zoom bar Sec→Year, 4 directions, layer chips, Day/Week/Month/Year bars, past veil, clay theme light + dark, reduce-motion stepping.
+- Core: layout options (`buffer`, `pillPx`), label thinning (`labelEvery`, `hasLabel`); 34 tests.
+- Checked in the browser (web build): renders, clock ticks, zoom, directions, drag, Back to now, light/dark. Not yet run on a phone.
+
 ### 2026-10-30 (5)
 - Design docs fast-forwarded into main.
 - Branch `scaffold`: Expo SDK 58 app (Router with src/app, placeholder home), jest-expo, ESLint flat config, typecheck/test scripts, static web output. Web export builds.

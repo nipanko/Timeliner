@@ -1,5 +1,6 @@
+import { HOUR } from '../time/units';
 import { getScale } from './scales';
-import { tickLabel, ticks } from './ticks';
+import { hasLabel, labelEvery, tickLabel, ticks } from './ticks';
 
 // America/New_York (jest.global-setup.js): DST starts Mar 8 and ends Nov 1, 2026.
 const local = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
@@ -33,6 +34,22 @@ describe('ticks', () => {
 
   it('stops at the cap', () => {
     expect(ticks(0, 1e12, { unit: 'second', step: 1 }, 1, 10)).toHaveLength(10);
+  });
+});
+
+describe('label thinning', () => {
+  const hourly = { unit: 'hour', step: 1 } as const;
+
+  it('labels every tick when there is room, fewer on a short axis', () => {
+    expect(labelEvery(hourly, 9 * HOUR, 500, 20)).toBe(1);
+    expect(labelEvery(hourly, 9 * HOUR, 233, 90)).toBe(4);
+  });
+
+  it('keeps labels on round local times', () => {
+    const labelled = ticks(local(2026, 10, 30), local(2026, 10, 30, 23), hourly).filter((t) => hasLabel(t, hourly, 4));
+    expect(hours(labelled)).toEqual([0, 4, 8, 12, 16, 20]);
+    const months = ticks(local(2026, 1, 1), local(2026, 12, 1), { unit: 'month', step: 1 }).filter((t) => hasLabel(t, { unit: 'month', step: 1 }, 3));
+    expect(months.map((t) => new Date(t).getMonth())).toEqual([0, 3, 6, 9]);
   });
 });
 
