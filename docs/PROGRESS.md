@@ -4,7 +4,7 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–6. Branches not merged yet, stacked: `journey/goals` (slice 7) → `ui/pro-look` (v0.3 pro redesign + lime / fonts / tabs / Settings / game juice, checked out). 55 tests, typecheck and lint green.
+- **Where the code is:** `main` has scaffold + slices 1–6. Branches not merged yet, stacked: `journey/goals` (slice 7) → `ui/pro-look` (v0.3 pro redesign + lime / fonts / tabs / Settings / game juice / endless week strip, checked out, last commit "Week strip: swipe through weeks without end"). 55 tests, typecheck and lint green.
 - **Resume with:** Nipanko reviews the new look, then says merge (both branches); next slice 8 = layer management (rename, recolor, add, icon column) + more settings (direction, week start, calm mode).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
@@ -12,6 +12,16 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **Blocked on:** —
 
 ## Session log
+### 2026-10-31 (8) — end of day
+- Day summary: slices 4–7 built (XP/levels/streaks, focus + notifications, end-of-day review, Journey goals + badges); 4–6 merged. Then the v0.3 "pro" look, the lime / fonts / Settings / game-juice pass and the endless week strip, all on `ui/pro-look`, waiting for the merge OK.
+- Learned (web + Expo Router):
+  - expo-router/ui headless tabs: the child of `TabList asChild` needs one flat style (`StyleSheet.flatten`), not an array, or web crashes in production; `TabSlot` never shrinks unless given `flexShrink: 1`.
+  - Anything sticking out of an `overflow: hidden` box that holds buttons lets the browser scroll that box sideways when a button takes focus. Clip decorations in their own layer; keep off-screen pages out of focus order.
+  - A pan gesture over buttons: the release at the end of a swipe also fires the button's press. Guard with a "swiped" flag set when the gesture activates.
+  - Swipe thresholds as a share of width feel too strict on wide screens; cap them (we use min(80 px, ¼ width)).
+  - The browser pane asks for reduced motion, so confetti and entrance animations don't show there; the app is right to honour it.
+  - Debugging gestures: `scheduleOnRN(console.log, …)` from the worklet, then read the console.
+
 ### 2026-10-31 (7)
 - Week strip swipes left/right through weeks without end (only 3 weeks rendered; recentres after each swipe). Tapping a day still jumps the timeline; the release at the end of a swipe no longer counts as a tap. Month title follows the shown week; a Today pill returns to this week. Checked on the web build with mouse drags both ways.
 
