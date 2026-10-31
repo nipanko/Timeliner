@@ -7,11 +7,13 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { mascotMood } from '@/core/game/mascot';
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, DAY, floorUnit, HOUR, MINUTE, type WeekStart } from '@/core/time/units';
 import { getScale, SCALES, zoomAfterPinch, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { saveEntry, setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
+import { Tick } from '@/features/game/Tick';
 import { useProgress } from '@/features/game/useProgress';
 import { useInbox } from '@/features/inbox/data';
 import { setSetting, useSetting } from '@/features/settings/data';
@@ -57,6 +59,7 @@ export function TimelineScreen() {
   const weekStart = addUnit(floorUnit(now, 'week', 1, ws), 'week', weekShift);
   // The title follows the week in the strip (its Thursday decides the month).
   const shown = weekShift ? addUnit(weekStart, 'day', 3) : now;
+  const doneToday = entries.filter((e) => e.done && e.start >= today && e.start < today + DAY).length;
   const colorById = new Map(allLayers.map((l) => [l.id, l.color.fill]));
   const dotsFor = (day: number) => {
     const next = addUnit(day, 'day', 1);
@@ -151,6 +154,7 @@ export function TimelineScreen() {
             accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes. Open your journey`}
             style={[styles.hud, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
           >
+            <Tick size={34} mood={mascotMood({ hour: new Date(now).getHours(), doneToday })} celebrate={progress.ready ? progress.xp : undefined} />
             <Text style={[styles.lv, { color: c.accentText }]}>LV {lv.level}</Text>
             <View style={styles.xpCol}>
               <View style={[styles.xpTrack, { backgroundColor: c.chip }]}>

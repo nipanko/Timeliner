@@ -52,6 +52,7 @@ Work `#F8DE84 / #4A3A00 / #D9A520` · Study `#CDBDF4 / #2F2160 / #8C73E0` · Hea
 
 ### Mascot: "Tick"
 An orange clay blob with a sprout. It rides the now-line, walks the day's path in Focus, jumps on completions and cheers in the web activity feed. Other players appear as colored blob variants. Final art later in Rive (PLAN.md).
+**Built 1 Nov (v1, SVG):** `features/game/Tick.tsx` (react-native-svg, our own drawing). Moods from `core/game/mascot.ts`: happy (default, also after a missed day: never sad), proud (3+ done today), sleepy (11 PM–6 AM), focused (focus running), cheer (1.4 s after any XP gain, with a jump + squash). Idle bob 2.4 s. Placed in the Timeline HUD, Focus, the level-up card and the Settings avatar. Not yet: riding the now-line, walking the path, Rive.
 
 ### Entry kinds and states
 Unchanged from v0.1: Task (timer, a block), Todo (checkbox pill), Note (pencil pill), Reminder (bell pill). Planned = pastel clay; Active = breathing purple ring + progress bar; Done = check, faded; Skipped = dashed neutral gap; Past = soft veil.

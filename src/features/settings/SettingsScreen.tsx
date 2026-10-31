@@ -3,8 +3,11 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { mascotMood } from '@/core/game/mascot';
 import type { Direction } from '@/core/timeline/viewport';
+import { Tick } from '@/features/game/Tick';
 import { useProgress } from '@/features/game/useProgress';
+import { useNow } from '@/hooks/useNow';
 import { ProgressFill } from '@/ui/motion';
 import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { PALETTES, usePalette, type IconName, type Palette, type ThemePreference } from '@/ui/theme';
@@ -21,6 +24,7 @@ const CALM: [string, string][] = [['off', 'Off'], ['on', 'On']];
 export function SettingsScreen() {
   const c = usePalette();
   const p = useProgress();
+  const now = useNow(60_000);
   const theme = useSetting<ThemePreference>('theme', 'system');
   const direction = useSetting<Direction>('direction', 'down');
   const weekStart = useSetting<string>('weekStart', '1');
@@ -39,7 +43,7 @@ export function SettingsScreen() {
           <View style={styles.profileTop}>
             <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.ring, { boxShadow: c.glow }]}>
               <View style={[styles.avatar, { backgroundColor: c.panel }]}>
-                <Ionicons name="game-controller" size={28} color={c.accentText} />
+                <Tick size={52} mood={mascotMood({ hour: new Date(now).getHours(), doneToday: 0 })} celebrate={p.ready ? p.xp : undefined} />
               </View>
             </LinearGradient>
             <View style={styles.grow}>

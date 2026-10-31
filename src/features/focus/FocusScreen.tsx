@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { focusedMs } from '@/core/game/focus';
 import { setDone, useEntry, useLayers } from '@/features/entries/data';
+import { Tick } from '@/features/game/Tick';
 import { addToInbox } from '@/features/inbox/data';
 import { useNow } from '@/hooks/useNow';
 import { cancelFocusEnd, scheduleFocusEnd } from '@/lib/notifications';
@@ -71,6 +72,7 @@ export function FocusScreen({ id }: { id: string }) {
       </Pressable>
 
       <View style={styles.middle}>
+        <Tick size={72} mood={active && !paused ? 'focused' : 'happy'} />
         {layer && (
           <Text style={[styles.layer, { backgroundColor: layer.color.fill, color: layer.color.ink }]}>{layer.name}</Text>
         )}

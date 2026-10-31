@@ -23,6 +23,7 @@ import { F } from '@/ui/type';
 
 import { useSetting } from '@/features/settings/data';
 
+import { Tick } from './Tick';
 import { useProgress } from './useProgress';
 
 type Toast = { id: number; text: string; badge: boolean };
@@ -96,6 +97,7 @@ export function Celebrations() {
         <Animated.View entering={FadeIn} exiting={FadeOut} style={[StyleSheet.absoluteFill, styles.backdrop]}>
           {!reduceMotion && <Confetti originY={0.42} pieces={24} />}
           <Animated.View entering={ZoomIn.springify().damping(12)} style={[styles.levelCard, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+            <Tick size={96} mood="cheer" />
             <Text style={[styles.levelLabel, { color: c.muted }]}>LEVEL UP</Text>
             <Text style={[styles.levelNumber, { color: c.accentText, textShadowColor: c.gradient[0] }]}>{levelUp}</Text>
             <Text style={[styles.levelSub, { color: c.ink }]}>New level reached. Keep the run going.</Text>

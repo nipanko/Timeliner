@@ -5,13 +5,17 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule and pinch zoom (all merged 1 Nov). 55 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries the Inbox on branch `inbox`, then says merge. Then the mascot slice (asked for 1 Nov).
-- **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
+- **Resume with:** Nipanko looks at Tick on branch `mascot`, then says merge. The three requests from 1 Nov (jump, Inbox, mascot) are then all done. Strongly suggested next: first run on a real phone.
+- **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (7)
+- Inbox merged. Branch `mascot`: react-native-svg (new dependency). `core/game/mascot.ts` mood rule (2 tests); `features/game/Tick.tsx` drawing with 5 faces, idle bob, jump + squash + cheer face when XP goes up (only after progress has loaded, or it cheered on every screen open). In the Timeline HUD, Focus (focused face while running), level-up card, Settings avatar. 64 tests.
+- Checked on the web build: Tick in all four places; undid and redid a task → header Tick went smiling → cheering → smiling. Jump itself not visible (pane asks for reduced motion). Not run on a phone.
+
 ### 2026-11-01 (6)
 - Jump merged. Branch `inbox`: `inbox` table (migration 0007) + `features/inbox` (data, InboxScreen at `/inbox` as a modal). Header icon with a count badge beside calendar / clock. Plan → add sheet prefilled (`title`, `inbox` route params) → saving removes the item. Focus: "Park a thought" inline field with a "Parked in your Inbox" confirmation.
 - Checked on the web build: captured items with Enter, planned "Idea: radial clock view" → task at 12:45–1:10 PM and the badge went 3 → 2; parked "Buy milk" from Focus. Not run on a phone.
