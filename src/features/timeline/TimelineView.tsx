@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
   FadeIn,
@@ -21,7 +21,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { reschedule } from '@/core/entries/timing';
 import { floorUnit, type Interval } from '@/core/time/units';
 import { layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
-import type { Scale } from '@/core/timeline/scales';
+import { zoomAfterPinch, type Scale, type ScaleId } from '@/core/timeline/scales';
 import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
 import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
 import type { Entry, Layer } from '@/features/entries/data';
@@ -57,9 +57,13 @@ type Props = {
   onMove: (entry: Entry, start: number, end: number | null) => void;
   /** A card was picked up (for a haptic). */
   onLift: () => void;
+  /** Pinch (or ctrl/⌘ + scroll on web) ended: the finger-distance ratio, > 1 = zoom in. */
+  onZoom: (pinchScale: number) => void;
 };
 
-export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen, onToggleDone, onMove, onLift }: Props) {
+const ZOOM_NAMES: Record<ScaleId, string> = { sec: 'Seconds', min: 'Minutes', hour: 'Hours', day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' };
+
+export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
@@ -122,6 +126,59 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
       anchorTime.set(withDecay({ velocity: (-sign * (vertical ? e.velocityY : e.velocityX) * span) / L }));
     },
   });
+
+  // Two fingers: pinch to change zoom rung. A chip shows where you'll land; it switches on release.
+  const pinchScale = useSharedValue(1);
+  const [preview, setPreview] = useState<ScaleId | null>(null);
+  const pinch = usePinchGesture({
+    onUpdate: (e) => {
+      pinchScale.set(e.scale);
+    },
+    onDeactivate: (e) => {
+      scheduleOnRN(onZoom, e.scale);
+    },
+    onFinalize: () => {
+      pinchScale.set(1);
+      scheduleOnRN(setPreview, null);
+    },
+  });
+  useAnimatedReaction(
+    () => zoomAfterPinch(scale.id, pinchScale.get()),
+    (target, before) => {
+      if (before !== null && target !== before) scheduleOnRN(setPreview, target);
+    },
+  );
+  const gestures = useSimultaneousGestures(pan, pinch);
+
+  // Web: trackpad pinch and ctrl/⌘ + mouse wheel arrive as wheel events with ctrlKey.
+  const root = useRef<ComponentRef<typeof View>>(null);
+  const zoomRef = useRef(onZoom);
+  useEffect(() => {
+    zoomRef.current = onZoom;
+  });
+  useEffect(() => {
+    const el = root.current as unknown as HTMLElement | null;
+    if (Platform.OS !== 'web' || !el) return;
+    let factor = 1;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault(); // or the browser zooms the whole page
+      factor *= Math.exp(-e.deltaY / 120);
+      setPreview(zoomAfterPinch(scale.id, factor));
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        zoomRef.current(factor);
+        factor = 1;
+        setPreview(null);
+      }, 200);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      clearTimeout(timer);
+    };
+  }, [scale.id]);
 
   const backToNow = () => {
     setShowNowButton(false);
@@ -187,6 +244,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
 
   return (
     <View
+      ref={root}
       style={[styles.tray, { backgroundColor: c.tray, boxShadow: c.pressedIn }]}
       onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
     >
@@ -203,7 +261,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
             />
           ))}
 
-          <GestureDetector gesture={pan}>
+          <GestureDetector gesture={gestures}>
             <View style={[styles.abs, body, styles.clip]} accessibilityLabel="Timeline. Drag to move through time.">
               <Pressable accessible={false} onPress={(e) => tapEmpty(e.nativeEvent.locationX, e.nativeEvent.locationY)} style={[styles.abs, styles.fill]} />
               <Animated.View entering={FadeIn.duration(250)} pointerEvents="box-none" style={[styles.abs, styles.fill, contentStyle]}>
@@ -254,6 +312,12 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
               </View>
             );
           })}
+
+          {preview && preview !== scale.id && (
+            <Animated.View entering={FadeIn.duration(120)} pointerEvents="none" style={[styles.zoomChip, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+              <Text style={[styles.zoomChipText, { color: c.ink }]}>{ZOOM_NAMES[preview]}</Text>
+            </Animated.View>
+          )}
 
           {showNowButton && (
             <Pressable accessibilityRole="button" onPress={backToNow} style={[styles.nowButton, { backgroundColor: c.accent, boxShadow: c.selected }]}>
@@ -440,4 +504,6 @@ const styles = StyleSheet.create({
   struck: { textDecorationLine: 'line-through' },
   nowButton: { position: 'absolute', right: 10, bottom: 10, height: 44, paddingHorizontal: 16, borderRadius: 999, justifyContent: 'center' },
   nowButtonText: { fontSize: 13, fontFamily: F.bold },
+  zoomChip: { position: 'absolute', alignSelf: 'center', top: '42%', paddingHorizontal: 18, height: 44, borderRadius: 999, justifyContent: 'center' },
+  zoomChipText: { fontSize: 16, fontFamily: F.display },
 });

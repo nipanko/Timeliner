@@ -40,3 +40,15 @@ export function scaleForSpan(span: number, axisPx: number, minGapPx = 48): Scale
   const fits = (s: Scale) => (APPROX_MS[s.major.unit] * s.major.step) / msPerPx >= minGapPx;
   return SCALES.find(fits) ?? SCALES[SCALES.length - 1];
 }
+
+/**
+ * Pinch → zoom ladder: spreading fingers (scale > 1) zooms in to a finer rung, pinching zooms out.
+ * Every doubling or halving of finger distance is one rung; a small wobble stays put.
+ */
+export function zoomAfterPinch(id: ScaleId, pinchScale: number): ScaleId {
+  'worklet'; // also runs on the UI thread while the fingers move
+  if (!(pinchScale > 0)) return id;
+  const steps = Math.trunc(Math.log2(pinchScale) * 1.25); // ×1.75 → 1 rung, ×3 → 2 rungs
+  const i = SCALES.findIndex((s) => s.id === id);
+  return SCALES[Math.min(SCALES.length - 1, Math.max(0, i - steps))].id;
+}

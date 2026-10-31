@@ -5,13 +5,18 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish and drag-to-reschedule (all merged 1 Nov). 55 tests, typecheck and lint green.
-- **Resume with:** everything merged. Ask Nipanko what's next (ideas: drag a card across lanes, pinch zoom, Inbox / park-a-thought, mascot with react-native-svg, first phone run on a real device).
+- **Resume with:** Nipanko tries pinch / ctrl+scroll zoom on `timeline/pinch`, then says merge. Then: first run on a real phone (strongly suggested), or another feature.
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (4)
+- Drag merged. Branch `timeline/pinch`: `core/timeline/scales.ts` `zoomAfterPinch()` (log2 of the pinch, a small wobble stays put; also runs as a worklet; 2 tests). Timeline: two-finger pinch runs alongside the drag (`useSimultaneousGestures`), a centred chip shows the target rung, zoom switches on release. Web: ctrl/⌘ + wheel (how browsers report a trackpad pinch) does the same and stops the page from zooming. 60 tests.
+- Checked on the web build with wheel events: Hour → Minutes (chip "Minutes"), then back to Hours. Two-finger pinch can't be tried in the pane (no touch); not run on a phone.
+- Left out: continuous zoom between rungs (the engine lays out per rung; needs a live span shared value).
+
 ### 2026-11-01 (3)
 - Motion polish merged. Branch `timeline/drag`: `core/entries/timing.ts` `reschedule()` (shift, snap the start to the nearest zoom slot, keep the length; 3 tests incl. DST). Cards get a long-press (350 ms) pan that `block`s the timeline's own pan; moving earlier than the hold fails it so the timeline scrolls. The card lifts (scale 1.05), follows the finger along the axis, snaps on release; a tap after a drag doesn't open it; medium haptic on lift (not on web or in calm mode). 58 tests.
 - Checked on the web build with mouse drags: a held drag moved "Motion test" from 11:45 to 9:45 (2 h, snapped); a faster drag scrolled the timeline instead; a tap still opens the card.

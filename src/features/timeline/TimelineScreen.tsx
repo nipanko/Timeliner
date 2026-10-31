@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, floorUnit, HOUR, type WeekStart } from '@/core/time/units';
-import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
+import { getScale, SCALES, zoomAfterPinch, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { saveEntry, setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useProgress } from '@/features/game/useProgress';
@@ -198,6 +198,7 @@ export function TimelineScreen() {
           onOpen={(id) => router.push({ pathname: '/entry/[id]', params: { id } })}
           onToggleDone={(e) => setDone(e.id, !e.done)}
           onMove={(e, start, end) => saveEntry(e.id, { ...e, start, end })}
+          onZoom={(pinch) => setScaleId(zoomAfterPinch(scaleId, pinch))}
           onLift={() => {
             if (Platform.OS !== 'web' && calm !== 'on') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           }}
