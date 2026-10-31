@@ -6,13 +6,16 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** Nipanko reviews `docs/PRIVACY.md` (fill the [brackets]); later a lawyer review. Code still waiting: `accounts/auth` + `sync/engine` (need email setup). Next options: Delete account + parental consent, native phone run, Terms of Use.
+- **Resume with:** Nipanko reviews `docs/STRATEGY.md` and picks the first slice (suggested: recurring tasks and routines). Accounts + sync still wait for email setup.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (18)
+- Privacy draft merged. Nipanko asked to make TIMELINER a top-1% paid product (personality, gamified goals, streaks, fun). Wrote `docs/STRATEGY.md` (proposal, branch `docs/strategy`): promise "See your time, play your day", beachhead time-blind adults 18–35, Tick's voice rules, daily loop (morning plan, evening close, daily quests), streaks 2.0, cosmetics-only progression and seasons, usefulness gaps (recurring tasks first), free vs Pro and regional prices to test, guardrails (no dark patterns, max 2 notifications/day, no paid randomness), metrics, 10-slice build order, closed beta of 20–50 people.
+
 ### 2026-11-01 (17)
 - Branch `docs/privacy`: `docs/PRIVACY.md`, a plain-English privacy policy draft written from the code (checked: no analytics or tracking libraries, fonts bundled, local notifications only with no push tokens, no data leaves the device without an account). Covers accounts (Supabase, Resend), children (under 13 no account, 13–17 parental consent, no tracking for under-18s per the DPDP Act), retention, rights, transfers. Placeholders in [brackets] and a before-publishing checklist: fill details, build Delete account, build parental consent, sign provider DPAs, lawyer review, publish at /privacy, write Terms of Use.
 
