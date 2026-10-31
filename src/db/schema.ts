@@ -38,6 +38,8 @@ export const entries = sqliteTable('entries', {
   /** IANA zone the entry was made in, so "November" stays November when travelling. */
   tz: text().notNull(),
   status: text().$type<'planned' | 'done' | 'cancelled'>().notNull().default('planned'),
+  /** Repeat rule (core/entries/repeat.ts): null, "daily" or "weekly:1,3,5". */
+  repeat: text(),
   createdAt: integer().notNull(),
   updatedAt: changed(),
   deletedAt: tombstone(),
@@ -91,5 +93,18 @@ export const inbox = sqliteTable('inbox', {
   title: text().notNull(),
   createdAt: integer().notNull(),
   updatedAt: stamped(),
+  deletedAt: tombstone(),
+});
+
+/** One finished occurrence of a repeating entry (the series itself stays planned). Undo = tombstone. */
+export const completions = sqliteTable('completions', {
+  /** `${entryId}@${occurrenceStart}`, the same id the occurrence has on the timeline. */
+  id: text().primaryKey(),
+  entryId: text()
+    .notNull()
+    .references(() => entries.id, { onDelete: 'cascade' }),
+  occurrenceStart: integer().notNull(),
+  doneAt: integer().notNull(),
+  updatedAt: changed(),
   deletedAt: tombstone(),
 });

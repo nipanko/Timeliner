@@ -7,12 +7,13 @@
 type Field = 's' | 's?' | 'i' | 'i?' | 'i~' | 'b'; // string, integer, boolean; ? = may be null; ~ = left out when missing (the database fills it)
 const SHAPES = {
   layers: { id: 's', name: 's', color: 's', icon: 's?', sort: 'i', visible: 'b', createdAt: 'i', updatedAt: 'i', deletedAt: 'i?' },
-  entries: { id: 's', layerId: 's', kind: 's', title: 's', startAt: 'i', endAt: 'i?', granularity: 's', tz: 's', status: 's', createdAt: 'i', updatedAt: 'i', deletedAt: 'i?' },
+  entries: { id: 's', layerId: 's', kind: 's', title: 's', startAt: 'i', endAt: 'i?', granularity: 's', tz: 's', status: 's', repeat: 's?', createdAt: 'i', updatedAt: 'i', deletedAt: 'i?' },
   focus_sessions: { id: 's', entryId: 's', startedAt: 'i', endedAt: 'i?', pausedMs: 'i', pausedAt: 'i?', updatedAt: 'i~', deletedAt: 'i?' },
   day_logs: { day: 'i', reviewedAt: 'i', updatedAt: 'i~' },
   milestones: { id: 's', goalId: 's', title: 's', sort: 'i', doneAt: 'i?', createdAt: 'i', updatedAt: 'i~', deletedAt: 'i?' },
   settings: { key: 's', value: 's', updatedAt: 'i~' },
   inbox: { id: 's', title: 's', createdAt: 'i', updatedAt: 'i~', deletedAt: 'i?' },
+  completions: { id: 's', entryId: 's', occurrenceStart: 'i', doneAt: 'i', updatedAt: 'i~', deletedAt: 'i?' },
 } as const satisfies Record<string, Record<string, Field>>;
 
 export type TableName = keyof typeof SHAPES;
@@ -70,6 +71,7 @@ export function parseBackup(text: string): Parsed {
   if (data.entries.some((r) => !layerIds.has(r.layerId))) return { ok: false, error: 'Damaged backup: an entry belongs to a missing layer.' };
   if (data.focus_sessions.some((r) => !entryIds.has(r.entryId))) return { ok: false, error: 'Damaged backup: a focus session belongs to a missing entry.' };
   if (data.milestones.some((r) => !entryIds.has(r.goalId))) return { ok: false, error: 'Damaged backup: a milestone belongs to a missing goal.' };
+  if (data.completions.some((r) => !entryIds.has(r.entryId))) return { ok: false, error: 'Damaged backup: a completed repeat belongs to a missing entry.' };
   for (const table of TABLES) {
     const key = table === 'day_logs' ? 'day' : table === 'settings' ? 'key' : 'id';
     const seen = new Set(data[table].map((r) => r[key]));

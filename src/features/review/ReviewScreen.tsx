@@ -3,10 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { expandEntries } from '@/core/entries/repeat';
 import { summarizeDay } from '@/core/game/review';
 import { REVIEW_XP } from '@/core/game/xp';
 import { addUnit, floorUnit, HOUR, MINUTE } from '@/core/time/units';
-import { saveEntry, useEntries, useLayers, type Entry } from '@/features/entries/data';
+import { saveEntry, useCompletedIds, useEntries, useLayers, type Entry } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
 import { useProgress } from '@/features/game/useProgress';
 import { useNow } from '@/hooks/useNow';
@@ -23,6 +24,7 @@ export function ReviewScreen() {
   const c = usePalette();
   const now = useNow(60_000);
   const entries = useEntries();
+  const completed = useCompletedIds();
   const layers = useLayers();
   const focused = useFocusedByEntry(now);
   const reviewed = useReviewedDays();
@@ -31,8 +33,9 @@ export function ReviewScreen() {
 
   const today = floorUnit(now, 'day');
   const tomorrow = addUnit(today, 'day', 1);
-  const s = summarizeDay(entries, focused, today, tomorrow, now);
-  const byId = new Map(entries.map((e) => [e.id, e]));
+  const todays = expandEntries(entries, completed, today, tomorrow); // repeats as today's occurrences
+  const s = summarizeDay(todays, focused, today, tomorrow, now);
+  const byId = new Map(todays.map((e) => [e.id, e]));
   const best = s.bestId ? byId.get(s.bestId) : undefined;
   const closed = reviewed.includes(today);
 
@@ -123,15 +126,18 @@ export function ReviewScreen() {
             return e ? (
               <View key={id} style={styles.missedRow}>
                 <Text numberOfLines={1} style={[styles.text, styles.grow, { color: c.ink }]}>&quot;{e.title}&quot; didn&apos;t happen. No penalty.</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Move ${e.title} to tomorrow`}
-                  onPress={() => moveToTomorrow(e)}
-                  style={({ pressed }) => [styles.smallButton, { backgroundColor: c.chip, boxShadow: c.raisedSm }, pressed && styles.pressed]}
-                >
-                  <Ionicons name="arrow-forward" size={14} color={c.ink} />
-                  <Text style={[styles.smallButtonText, { color: c.ink }]}>Tomorrow</Text>
-                </Pressable>
+                {/* A repeat comes back by itself; only one-off items move to tomorrow. */}
+                {!e.seriesId && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move ${e.title} to tomorrow`}
+                    onPress={() => moveToTomorrow(e)}
+                    style={({ pressed }) => [styles.smallButton, { backgroundColor: c.chip, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+                  >
+                    <Ionicons name="arrow-forward" size={14} color={c.ink} />
+                    <Text style={[styles.smallButtonText, { color: c.ink }]}>Tomorrow</Text>
+                  </Pressable>
+                )}
               </View>
             ) : null;
           })}

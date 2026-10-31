@@ -6,12 +6,13 @@ import { useMemo } from 'react';
 import type { EntryKind, Granularity } from '@/core/entries/timing';
 import type { TimelineEntry } from '@/core/timeline/layout';
 import { getDb } from '@/db/client';
-import { entries, focusSessions, layers, milestones } from '@/db/schema';
+import { completions, entries, focusSessions, layers, milestones } from '@/db/schema';
 import { LAYER_COLORS, type IconName, type LayerColor, type LayerColorKey } from '@/ui/theme';
 
 export type Layer = { id: string; name: string; colorKey: LayerColorKey; color: LayerColor; icon: IconName; visible: boolean };
-export type Entry = TimelineEntry & { kind: EntryKind; title: string; granularity: Granularity; done: boolean; createdAt: number };
-export type EntryDraft = Pick<Entry, 'layerId' | 'kind' | 'title' | 'start' | 'end' | 'granularity'>;
+/** `repeat`: rule text (core/entries/repeat.ts). An occurrence of a repeating entry has `seriesId` (the entry's own id). */
+export type Entry = TimelineEntry & { kind: EntryKind; title: string; granularity: Granularity; done: boolean; createdAt: number; repeat: string | null; seriesId?: string };
+export type EntryDraft = Pick<Entry, 'layerId' | 'kind' | 'title' | 'start' | 'end' | 'granularity'> & { repeat?: string | null };
 
 type EntryRow = typeof entries.$inferSelect;
 const toEntry = (r: EntryRow): Entry => ({
@@ -24,6 +25,7 @@ const toEntry = (r: EntryRow): Entry => ({
   granularity: r.granularity,
   done: r.status === 'done',
   createdAt: r.createdAt,
+  repeat: r.repeat,
 });
 
 export function useLayers(): Layer[] {
@@ -52,7 +54,7 @@ export function useEntry(id: string | null): Entry | undefined {
 
 export async function saveEntry(id: string | null, draft: EntryDraft) {
   const now = Date.now();
-  const row = { layerId: draft.layerId, kind: draft.kind, title: draft.title, startAt: draft.start, endAt: draft.end, granularity: draft.granularity, updatedAt: now };
+  const row = { layerId: draft.layerId, kind: draft.kind, title: draft.title, startAt: draft.start, endAt: draft.end, granularity: draft.granularity, repeat: draft.repeat ?? null, updatedAt: now };
   if (id) await getDb().update(entries).set(row).where(eq(entries.id, id));
   else await getDb().insert(entries).values({ ...row, id: randomUUID(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, createdAt: now });
 }
@@ -61,9 +63,30 @@ export async function setDone(id: string, done: boolean) {
   await getDb().update(entries).set({ status: done ? 'done' : 'planned', updatedAt: Date.now() }).where(eq(entries.id, id));
 }
 
+/** Completes or undoes an entry, or one occurrence of a repeating entry (which has its own completion row). */
+export async function setEntryDone(e: Pick<Entry, 'id' | 'start' | 'seriesId'>, done: boolean) {
+  if (!e.seriesId) return setDone(e.id, done);
+  const now = Date.now();
+  if (done) {
+    await getDb()
+      .insert(completions)
+      .values({ id: e.id, entryId: e.seriesId, occurrenceStart: e.start, doneAt: now })
+      .onConflictDoUpdate({ target: completions.id, set: { doneAt: now, deletedAt: null } });
+  } else {
+    await getDb().update(completions).set({ deletedAt: now }).where(eq(completions.id, e.id));
+  }
+}
+
+/** Ids of every finished occurrence (see core/entries/repeat.ts occurrenceId). */
+export function useCompletedIds(): ReadonlySet<string> {
+  const { data } = useLiveQuery(getDb().select({ id: completions.id }).from(completions).where(isNull(completions.deletedAt)));
+  return useMemo(() => new Set(data.map((r) => r.id)), [data]);
+}
+
 export async function deleteEntry(id: string) {
   // Tombstones, not deletes, so the deletion can sync to other devices; children go with the entry.
   const deletedAt = Date.now();
+  await getDb().update(completions).set({ deletedAt }).where(eq(completions.entryId, id));
   await getDb().update(focusSessions).set({ deletedAt }).where(eq(focusSessions.entryId, id));
   await getDb().update(milestones).set({ deletedAt }).where(eq(milestones.goalId, id));
   await getDb().update(entries).set({ deletedAt }).where(eq(entries.id, id));

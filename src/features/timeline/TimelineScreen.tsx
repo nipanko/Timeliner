@@ -7,12 +7,13 @@ import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { expandEntries } from '@/core/entries/repeat';
 import { mascotMood } from '@/core/game/mascot';
 import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, DAY, floorUnit, HOUR, MINUTE, type WeekStart } from '@/core/time/units';
 import { getScale, SCALES, zoomAfterPinch, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
-import { saveEntry, setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
+import { saveEntry, setEntryDone, setLayerVisible, useCompletedIds, useEntries, useLayers } from '@/features/entries/data';
 import { Tick } from '@/features/game/Tick';
 import { useProgress } from '@/features/game/useProgress';
 import { useInbox } from '@/features/inbox/data';
@@ -45,6 +46,9 @@ export function TimelineScreen() {
   const [weekShift, setWeekShift] = useState(0);
   const allLayers = useLayers();
   const entries = useEntries();
+  const completed = useCompletedIds();
+  // Repeating entries become dated occurrences for any stretch of time (core/entries/repeat.ts).
+  const around = (from: number, to: number) => expandEntries(entries, completed, from, to);
   const anchorTime = useSharedValue(now);
   const following = useSharedValue(true);
   const layers = allLayers.filter((l) => l.visible);
@@ -53,18 +57,19 @@ export function TimelineScreen() {
   const lv = progress.level;
   const run = progress.streak;
   useEffect(() => {
-    syncEntryNotifications(entries, Date.now());
-  }, [entries]);
+    const now = Date.now();
+    syncEntryNotifications(expandEntries(entries, completed, now, now + 2 * DAY), now); // reminders cover the next 48 h
+  }, [entries, completed]);
 
   const today = floorUnit(now, 'day');
   const weekStart = addUnit(floorUnit(now, 'week', 1, ws), 'week', weekShift);
   // The title follows the week in the strip (its Thursday decides the month).
   const shown = weekShift ? addUnit(weekStart, 'day', 3) : now;
-  const doneToday = entries.filter((e) => e.done && e.start >= today && e.start < today + DAY).length;
+  const doneToday = around(today, today + DAY).filter((e) => e.done && e.start >= today).length;
   const colorById = new Map(allLayers.map((l) => [l.id, l.color.fill]));
   const dotsFor = (day: number) => {
     const next = addUnit(day, 'day', 1);
-    return [...new Set(entries.filter((e) => e.start >= day && e.start < next).map((e) => colorById.get(e.layerId) ?? c.muted))].slice(0, 4);
+    return [...new Set(around(day, next).filter((e) => e.start >= day && e.start < next).map((e) => colorById.get(e.layerId) ?? c.muted))].slice(0, 4);
   };
 
   const toggleLayer = (id: string, visible: boolean) => {
@@ -239,13 +244,14 @@ export function TimelineScreen() {
         <TimelineView
           key={`${scaleId}-${direction}`}
           entries={entries}
+          completed={completed}
           layers={layers}
           scale={scale}
           direction={direction}
           camera={{ anchorTime, following }}
           onAdd={openAdd}
           onOpen={(id) => router.push({ pathname: '/entry/[id]', params: { id } })}
-          onToggleDone={(e) => setDone(e.id, !e.done)}
+          onToggleDone={(e) => setEntryDone(e, !e.done)}
           onMove={(e, start, end, layerId) => saveEntry(e.id, { ...e, start, end, layerId })}
           onZoom={(pinch) => setScaleId(zoomAfterPinch(scaleId, pinch))}
           onLift={() => {

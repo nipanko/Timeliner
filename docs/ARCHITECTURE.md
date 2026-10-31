@@ -74,6 +74,8 @@ Tests sit next to the code: `src/core/game/xp.test.ts`.
 
 ## 3. Data model (expo-sqlite + Drizzle)
 
+**Repeating entries (migration 0009):** an entry may carry `repeat` (`daily` or `weekly:1,3,5`; parsed in `core/entries/repeat.ts`). Occurrences are never stored: `expandEntries` turns a series into dated occurrences for whatever range a screen needs (the timeline's drawn window, today for Review, first-occurrence-to-now for XP, the next 48 h for reminders). Each finished occurrence is a row in `completions` (id `${entryId}@${occurrenceStart}`, tombstone on undo). One occurrence can't be moved alone yet (drag is off for them).
+
 **Sync columns (migration 0008):** every table has `updatedAt` (stamped by Drizzle `$defaultFn` / `$onUpdateFn` on each insert and update, so no write can forget it); tables with deletes (`layers`, `entries`, `focus_sessions`, `milestones`, `inbox`) have `deletedAt`: deleting writes a tombstone and every read filters `deletedAt IS NULL`. Merge rule in `core/sync.ts`: last write wins per row; the server stores only strictly newer rows, a device adopts server rows that are newer or equal (so devices converge).
 
 All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a whole day / week / month / year" also keep the IANA time zone they were made in, so "November" stays November if you travel.

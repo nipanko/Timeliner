@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DEFAULT_GRANULARITY, entryTiming, nudge, type EntryKind, type Granularity } from '@/core/entries/timing';
+import { formatRepeat, parseRepeat, repeatLabel } from '@/core/entries/repeat';
 import { APPROX_MS, MINUTE } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import { removeFromInbox } from '@/features/inbox/data';
@@ -15,7 +16,24 @@ import { deleteEntry, saveEntry, setDone, useEntry, useLayers, type Entry, type 
 
 /** `fromInbox`: the inbox item being planned; it is removed once the entry is saved. */
 type Props = { id: string | null; at: number; layerId?: string; scaleId: ScaleId; title?: string; fromInbox?: string };
-type Form = { kind: EntryKind; title: string; granularity: Granularity; at: number; lengthMin: number; layerId: string };
+type Form = { kind: EntryKind; title: string; granularity: Granularity; at: number; lengthMin: number; layerId: string; repeat: string | null };
+
+type RepeatChoice = 'never' | 'daily' | 'weekdays' | 'weekly' | 'custom';
+const REPEAT_CHOICES: [RepeatChoice, string][] = [['never', 'Never'], ['daily', 'Daily'], ['weekdays', 'Weekdays'], ['weekly', 'Weekly'], ['custom', 'Custom']];
+const DAY_LETTERS: [number, string, string][] = [[1, 'M', 'Monday'], [2, 'T', 'Tuesday'], [3, 'W', 'Wednesday'], [4, 'T', 'Thursday'], [5, 'F', 'Friday'], [6, 'S', 'Saturday'], [0, 'S', 'Sunday']];
+
+/** "every day", "on weekdays", "every Mon, Wed" for the plan sentence. */
+const repeatPhrase = (label: string) => (label === 'Daily' ? 'every day' : label === 'Weekdays' || label === 'Weekends' ? `on ${label.toLowerCase()}` : `every ${label}`);
+
+/** Which chip a stored rule shows as. "Weekly" means: on the same weekday as the entry's date. */
+function repeatChoice(text: string | null, at: number): RepeatChoice {
+  const rule = parseRepeat(text);
+  if (!rule) return 'never';
+  if (rule.kind === 'daily') return 'daily';
+  if (rule.days.join(',') === '1,2,3,4,5') return 'weekdays';
+  if (rule.days.length === 1 && rule.days[0] === new Date(at).getDay()) return 'weekly';
+  return 'custom';
+}
 
 const KINDS: [EntryKind, string][] = [['task', 'Task'], ['todo', 'Todo'], ['note', 'Note'], ['reminder', 'Reminder']];
 const GRANULARITIES: [Granularity, string][] = [['moment', 'Time'], ['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year']];
@@ -36,12 +54,12 @@ function newForm(at: number, layerId: string | undefined, scaleId: ScaleId, laye
   const taskMin = (APPROX_MS[scale.taskLength.unit] * scale.taskLength.step) / MINUTE;
   const nearest = LENGTHS.reduce((best, m) => (Math.abs(m - taskMin) < Math.abs(best - taskMin) ? m : best));
   const layer = layers.find((l) => l.id === layerId) ?? layers.find((l) => l.visible) ?? layers[0];
-  return { kind: 'task', title: '', granularity: DEFAULT_GRANULARITY[scale.id], at, lengthMin: nearest, layerId: layer.id };
+  return { kind: 'task', title: '', granularity: DEFAULT_GRANULARITY[scale.id], at, lengthMin: nearest, layerId: layer.id, repeat: null };
 }
 
 function fromEntry(e: Entry): Form {
   const lengthMin = e.end !== null && e.granularity === 'moment' ? Math.round((e.end - e.start) / MINUTE) : 25;
-  return { kind: e.kind, title: e.title, granularity: e.granularity, at: e.start, lengthMin, layerId: e.layerId };
+  return { kind: e.kind, title: e.title, granularity: e.granularity, at: e.start, lengthMin, layerId: e.layerId, repeat: e.repeat };
 }
 
 function whenLabel(g: Granularity, t: number): string {
@@ -70,11 +88,28 @@ function EntryForm({ id, done, initial, layers, fromInbox }: { id: string | null
   const when = whenLabel(granularity, start);
   const title = form.title.trim();
   const lead = granularity === 'moment' ? `At ${when}` : granularity === 'week' ? `In the ${when.replace('Week', 'week')}` : `${granularity === 'day' ? 'On' : 'In'} ${when}`;
+  // Notes don't repeat; weeks, months and years are goals, not routines.
+  const canRepeat = form.kind !== 'note' && (granularity === 'moment' || granularity === 'day');
+  const rule = canRepeat ? parseRepeat(form.repeat) : null;
+  // Picking Custom keeps the day picker open even when the days happen to match another choice.
+  const [custom, setCustom] = useState(() => repeatChoice(initial.repeat, initial.at) === 'custom');
+  const choice = custom ? 'custom' : repeatChoice(rule ? form.repeat : null, form.at);
+  const pickRepeat = (next: RepeatChoice) => {
+    setCustom(next === 'custom');
+    const weekday = new Date(form.at).getDay();
+    const text = { never: null, daily: 'daily', weekdays: 'weekly:1,2,3,4,5', weekly: `weekly:${weekday}`, custom: rule?.kind === 'weekly' ? form.repeat : `weekly:${weekday}` }[next];
+    set({ repeat: text });
+  };
+  const toggleDay = (d: number) => {
+    const days = rule?.kind === 'weekly' ? rule.days : rule?.kind === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : [];
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d];
+    set({ repeat: next.length ? formatRepeat({ kind: 'weekly', days: next }) : null });
+  };
   const lengths = LENGTHS.includes(form.lengthMin) ? LENGTHS : [...LENGTHS, form.lengthMin].sort((a, b) => a - b);
 
   const save = async () => {
     if (!title) return;
-    await saveEntry(id, { layerId: layer.id, kind: form.kind, title, start, end, granularity });
+    await saveEntry(id, { layerId: layer.id, kind: form.kind, title, start, end, granularity, repeat: canRepeat ? form.repeat : null });
     if (fromInbox) await removeFromInbox(fromInbox);
     close();
   };
@@ -156,6 +191,24 @@ function EntryForm({ id, done, initial, layers, fromInbox }: { id: string | null
           </View>
         )}
 
+        {canRepeat && (
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: c.muted }]}>Repeat</Text>
+            <View style={styles.row}>
+              {REPEAT_CHOICES.map(([k, label]) => (
+                <Chip key={k} c={c} label={label} a11y={`Repeat: ${label}`} on={choice === k} onPress={() => pickRepeat(k)} />
+              ))}
+            </View>
+            {choice === 'custom' && (
+              <View style={styles.row}>
+                {DAY_LETTERS.map(([d, letter, name]) => (
+                  <Chip key={d} c={c} label={letter} a11y={name} square on={rule?.kind === 'daily' || (rule?.kind === 'weekly' && rule.days.includes(d))} onPress={() => toggleDay(d)} />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.field}>
           <Text style={[styles.label, { color: c.muted }]}>Layer</Text>
           <View style={styles.row}>
@@ -178,6 +231,7 @@ function EntryForm({ id, done, initial, layers, fromInbox }: { id: string | null
           <Text style={[styles.planLabel, { color: layer.color.ink }]}>YOUR PLAN</Text>
           <Text style={[styles.planText, { color: layer.color.ink }]}>
             {lead}, in {layer.name}, {VERB[form.kind]} {title || '…'}
+            {rule ? `, ${repeatPhrase(repeatLabel(rule))}` : ''}
           </Text>
         </View>
       </ScrollView>
@@ -187,7 +241,8 @@ function EntryForm({ id, done, initial, layers, fromInbox }: { id: string | null
           <Text style={[styles.saveText, { color: c.ink }]}>Focus on this</Text>
         </Pressable>
       )}
-      {id && (
+      {/* A repeating entry is completed per day on the timeline, not here. */}
+      {id && !initial.repeat && (
         <Pressable accessibilityRole="button" onPress={toggleDone} style={[styles.doneButton, { backgroundColor: c.chip, boxShadow: c.raisedSm }]}>
           <Text style={[styles.saveText, { color: c.ink }]}>{done ? 'Mark not done' : 'Mark done'}</Text>
         </Pressable>

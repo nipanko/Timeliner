@@ -1,7 +1,7 @@
 import { makeBackup, type Backup, type BackupData } from '@/core/backup';
 
 import { getDb } from './client';
-import { dayLogs, entries, focusSessions, inbox, layers, milestones, settings } from './schema';
+import { completions, dayLogs, entries, focusSessions, inbox, layers, milestones, settings } from './schema';
 
 const TABLES = {
   layers,
@@ -11,9 +11,10 @@ const TABLES = {
   milestones,
   settings,
   inbox,
+  completions,
 };
 // Parents before children when inserting; the reverse when deleting (foreign keys).
-const INSERT_ORDER = ['layers', 'entries', 'focus_sessions', 'milestones', 'day_logs', 'settings', 'inbox'] as const;
+const INSERT_ORDER = ['layers', 'entries', 'focus_sessions', 'milestones', 'completions', 'day_logs', 'settings', 'inbox'] as const;
 const CHUNK = 200; // rows per INSERT, well under SQLite's variable limit
 
 export async function exportAll(): Promise<Backup> {

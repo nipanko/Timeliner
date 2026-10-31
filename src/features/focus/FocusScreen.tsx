@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { occurrenceId, occurrences, parseRepeat } from '@/core/entries/repeat';
 import { focusedMs } from '@/core/game/focus';
-import { setDone, useEntry, useLayers } from '@/features/entries/data';
+import { DAY, floorUnit } from '@/core/time/units';
+import { setEntryDone, useEntry, useLayers, type Entry } from '@/features/entries/data';
 import { Tick } from '@/features/game/Tick';
 import { addToInbox } from '@/features/inbox/data';
 import { useNow } from '@/hooks/useNow';
@@ -21,6 +23,17 @@ const mmss = (ms: number) => {
   const t = Math.ceil(Math.abs(ms) / 1000);
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
+
+/** A repeating entry is finished for today's occurrence (the one closest to now); others as a whole. */
+function currentOccurrence(entry: Entry, now: number) {
+  const rule = parseRepeat(entry.repeat);
+  if (!rule) return entry;
+  const length = entry.end === null ? 0 : entry.end - entry.start;
+  const day = floorUnit(now, 'day');
+  const today = occurrences(entry.start, length, rule, day, day + DAY);
+  const at = today.reduce((best, t) => (Math.abs(t - now) < Math.abs(best - now) ? t : best), today[0] ?? now);
+  return { id: occurrenceId(entry.id, at), start: at, seriesId: entry.id };
+}
 
 function close() {
   if (router.canGoBack()) router.back();
@@ -60,7 +73,7 @@ export function FocusScreen({ id }: { id: string }) {
   const finish = async (done: boolean) => {
     if (active) await endSession(active);
     await cancelFocusEnd(id);
-    if (done) await setDone(id, true);
+    if (done) await setEntryDone(currentOccurrence(entry, Date.now()), true);
     close();
   };
 

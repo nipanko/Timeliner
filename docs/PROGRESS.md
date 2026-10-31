@@ -6,13 +6,18 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** Nipanko reviews `docs/STRATEGY.md` and picks the first slice (suggested: recurring tasks and routines). Accounts + sync still wait for email setup.
+- **Resume with:** Nipanko tries recurring tasks on `entries/repeat` (stacked on `docs/strategy`), then says merge (both). Next strategy slice: Tick's voice + daily ritual. Accounts + sync still wait for email setup.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (19)
+- Nipanko picked the first strategy slice: recurring tasks. Branch `entries/repeat` (on top of `docs/strategy`): `core/entries/repeat.ts` (rules daily / weekly days, labels, DST-safe occurrences, `expandEntries`; 5 tests); migration 0009 (`entries.repeat`, `completions` table, sync-ready). Timeline expands repeats for its drawn window (next-up, lane counts, week-strip dots, reminders for 48 h), Review for today, XP / streaks / badges from the first occurrence to now. `setEntryDone` routes an occurrence to its completion row; focus Done completes today's occurrence; tapping an occurrence opens the series; drag is off for occurrences; Review hides "Tomorrow" for repeats. Add sheet: Repeat (Never / Daily / Weekdays / Weekly / Custom days) and "every …" in the plan sentence; Mark done hidden for a series. Backups carry `repeat` and completions. 77 tests.
+- Checked on the web build: created "Repeat test: stretch" daily → occurrences on every day at Day zoom; completed only today's (tomorrow became next up, XP 0 → 15, streak 1), survived a reload; deleting the series removed every occurrence and its XP. Fixed on the way: Custom collapsed into Weekly when the chosen day matched the date.
+- Known limits (shortcut comments): focus time per series doesn't split per occurrence; one occurrence can't be moved or skipped alone yet. When `sync/engine` merges, add `completions` to `db/sync.ts` TABLES and the SQL `tbl` check list.
+
 ### 2026-11-01 (18)
 - Privacy draft merged. Nipanko asked to make TIMELINER a top-1% paid product (personality, gamified goals, streaks, fun). Wrote `docs/STRATEGY.md` (proposal, branch `docs/strategy`): promise "See your time, play your day", beachhead time-blind adults 18–35, Tick's voice rules, daily loop (morning plan, evening close, daily quests), streaks 2.0, cosmetics-only progression and seasons, usefulness gaps (recurring tasks first), free vs Pro and regional prices to test, guardrails (no dark patterns, max 2 notifications/day, no paid randomness), metrics, 10-slice build order, closed beta of 20–50 people.
 

@@ -18,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { expandEntries, parseRepeat, repeatLabel } from '@/core/entries/repeat';
 import { reschedule } from '@/core/entries/timing';
 import { floorUnit, type Interval } from '@/core/time/units';
 import { laneAfterDrag, layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
@@ -46,6 +47,8 @@ export type Camera = { anchorTime: SharedValue<number>; following: SharedValue<b
 
 type Props = {
   entries: readonly Entry[];
+  /** Finished occurrences of repeating entries (expanded here, for whatever stretch of time is drawn). */
+  completed: ReadonlySet<string>;
   layers: readonly Layer[];
   scale: Scale;
   direction: Direction;
@@ -65,7 +68,7 @@ type Props = {
 
 const ZOOM_NAMES: Record<ScaleId, string> = { sec: 'Seconds', min: 'Minutes', hour: 'Hours', day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' };
 
-export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom }: Props) {
+export function TimelineView({ entries, completed, layers, scale, direction, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
@@ -235,28 +238,30 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
     const { start, end } = visibleRange(v);
     const from = start - BUFFER * span;
     const to = end + BUFFER * span;
-    const byId = new Map(entries.map((e) => [e.id, e]));
+    const shown = expandEntries(entries, completed, from, to);
+    const byId = new Map(shown.map((e) => [e.id, e]));
     const every = labelEvery(scale.major, span, L, vertical ? 20 : 90);
     return {
       majors: ticks(from, to, scale.major).map((t) => ({ t, at: px(timeToPos(t, v)), label: hasLabel(t, scale.major, every) ? tickLabel(t, scale) : '' })),
       minors: ticks(from, to, scale.minor).map((t) => ({ t, at: px(timeToPos(t, v)) })),
-      items: layoutTimeline(entries, layers.map((l) => l.id), v, L, { buffer: BUFFER, pillPx: vertical ? 30 : 128 }).map((it) => ({
+      items: layoutTimeline(shown, layers.map((l) => l.id), v, L, { buffer: BUFFER, pillPx: vertical ? 30 : 128 }).map((it) => ({
         ...it,
         at: px(it.pos),
         len: it.size * L,
         entry: byId.get(it.id)!,
       })),
     };
-  }, [entries, layers, scale, direction, center, origin, span, L, sign, vertical]);
+  }, [entries, completed, layers, scale, direction, center, origin, span, L, sign, vertical]);
 
   const minuteNow = useNow(60_000);
   const today = floorUnit(minuteNow, 'day');
   // The next thing to do pulses (DESIGN.md: "next up"); only timed entries still ahead.
   const nextId = useMemo(() => {
     let best: Entry | undefined;
-    for (const e of entries) if (!e.done && e.kind !== 'note' && e.granularity === 'moment' && e.start >= minuteNow && (!best || e.start < best.start)) best = e;
+    for (const e of expandEntries(entries, completed, minuteNow, minuteNow + 7 * 86_400_000))
+      if (!e.done && e.kind !== 'note' && e.granularity === 'moment' && e.start >= minuteNow && (!best || e.start < best.start)) best = e;
     return best?.id;
-  }, [entries, minuteNow]);
+  }, [entries, completed, minuteNow]);
   const place = (at: number, len: number, cross: number, crossLen: number): ViewStyle =>
     vertical ? { top: at, height: len, left: cross, width: crossLen } : { left: at, width: len, top: cross, height: crossLen };
   const body: ViewStyle = vertical ? { top: HDR, left: 0, right: 0, bottom: 0 } : { left: HDR, top: 0, bottom: 0, right: 0 };
@@ -327,7 +332,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
 
           <View style={[styles.abs, vertical ? { top: 0, left: 0, right: 0, height: HDR } : { left: 0, top: 0, bottom: 0, width: HDR }, { backgroundColor: c.tray }]} />
           {layers.map((layer, i) => {
-            const count = entries.filter((e) => e.layerId === layer.id && (e.kind === 'task' || e.kind === 'todo') && e.start >= today && e.start < today + 86_400_000).length;
+            const count = expandEntries(entries, completed, today, today + 86_400_000).filter((e) => e.layerId === layer.id && (e.kind === 'task' || e.kind === 'todo') && e.start >= today && e.start < today + 86_400_000).length;
             return (
               <View
                 key={layer.id}
@@ -412,7 +417,8 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
     cross.set(withTiming(0, { duration: 180 }));
   };
   const move = usePanGesture({
-    enabled: entry.granularity === 'moment',
+    // One occurrence of a repeat can't be moved alone yet; edit the series in its sheet.
+    enabled: entry.granularity === 'moment' && !entry.seriesId,
     activateAfterLongPress: 350,
     // Moving before the hold ends fails this gesture, so a quick drag on a card still scrolls the timeline.
     failOffsetX: [-12, 12],
@@ -471,7 +477,7 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        onPress={() => onOpen(entry.id)}
+        onPress={() => onOpen(entry.seriesId ?? entry.id)}
         style={[styles.abs, place(it.at, Math.max(it.len, 8), start + 4, 8), { backgroundColor: tone, opacity: entry.done ? 0.5 : 1, borderRadius: 4 }]}
       />
     );
@@ -482,7 +488,9 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
   const frame = place(it.at, Math.max(it.len, NODE), start + 2, sub - 4);
   const checkable = entry.kind !== 'note';
   const icon = entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind];
-  const subtitle = entry.done ? 'Done' : skipped ? 'Missed, no penalty' : isNext ? 'Next up' : entry.end !== null && entry.granularity === 'moment' ? `${timeFmt.format(entry.start)}–${timeFmt.format(entry.end)}` : timeFmt.format(entry.start);
+  const rule = parseRepeat(entry.repeat);
+  const when = entry.end !== null && entry.granularity === 'moment' ? `${timeFmt.format(entry.start)}–${timeFmt.format(entry.end)}` : timeFmt.format(entry.start);
+  const subtitle = entry.done ? 'Done' : skipped ? 'Missed, no penalty' : isNext ? 'Next up' : rule ? `${when} · ${repeatLabel(rule)}` : when;
   return (
     <>
       <Animated.View
@@ -510,7 +518,7 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
               aria-checked={checkable ? entry.done : undefined}
               accessibilityLabel={checkable ? `Mark ${entry.title} ${entry.done ? 'not done' : 'done'}` : label}
               hitSlop={8}
-              onPress={() => !dragged.get() && (checkable ? onToggleDone(entry) : onOpen(entry.id))}
+              onPress={() => !dragged.get() && (checkable ? onToggleDone(entry) : onOpen(entry.seriesId ?? entry.id))}
               style={({ pressed }) => [
                 styles.abs,
                 styles.node,
@@ -534,7 +542,7 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
               accessibilityRole="button"
               accessibilityLabel={label}
               accessibilityHint={entry.granularity === 'moment' ? 'Long-press and drag to move it' : undefined}
-              onPress={() => !dragged.get() && onOpen(entry.id)}
+              onPress={() => !dragged.get() && onOpen(entry.seriesId ?? entry.id)}
               style={({ pressed }) => [styles.abs, vertical ? { top: 0, left: NODE + 6, right: 0 } : { left: NODE + 6, top: 0, width: 150 }, styles.labelBox, pressed && styles.pressed]}
             >
               <Text numberOfLines={1} style={[styles.itemTitle, { color: skipped ? c.muted : c.ink }, entry.done && styles.doneTitle]}>
