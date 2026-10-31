@@ -24,7 +24,7 @@ Prices and limits below are from memory: **check them on each provider's pricing
 Steps (Nipanko does the account parts; I prepare the rest):
 1. **GitHub private repo** (already on your to-do list), push `main`.
 2. **Cloudflare account →** Workers & Pages → Create → Pages → connect the repo.
-   - Build command: `npm ci && npm run build:web`
+   - Build command: `npm run build:web` (Cloudflare installs the dependencies from `package-lock.json` itself)
    - Output folder: `dist`
    - Environment variable: `NODE_VERSION = 22`
 3. Every push to `main` deploys to production. Every other branch gets its own preview URL: that is our **staging**.
