@@ -5,13 +5,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule and pinch zoom (all merged 1 Nov). 55 tests, typecheck and lint green.
-- **Resume with:** everything merged. Suggested next: first run on a real phone (nothing since slice 2 has run on a device). Other ideas: drag across lanes, Inbox / park-a-thought, mascot (react-native-svg), continuous zoom.
+- **Resume with:** Nipanko tries the calendar / clock on `timeline/jump`, then says merge. Then Inbox slice, then mascot slice (both asked for 1 Nov).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (5)
+- Pinch zoom merged. Nipanko asked for: mascot + Inbox, a calendar in the corner to jump to a date, and a small clock icon with an iPhone-alarm-style scrolling time picker with sound. Plan: three slices (jump → Inbox → mascot).
+- Branch `timeline/jump`: calendar and clock buttons beside the month title. `JumpSheet`: month calendar (`core/time/periods.ts` `monthGrid`, tested incl. DST) and time wheels (`src/ui/Wheel.tsx`: Reanimated + pan, rubber band, spring settle, 3D tilt, mouse wheel on web, adjustable for screen readers). Tick: `src/lib/tick.ts` (expo-audio, new dependency, plays our own generated `assets/sounds/tick.wav`, mixes with music, respects the silent switch, + selection haptic) and `tick.web.ts` (Web Audio click, no file). Jumping also moves the week strip. 62 tests.
+- Checked on the web build: calendar → next month → 12 Nov: title November 2026, strip 9–15 Nov; clock wheels via mouse wheel 12:26 → 11:29 PM, Go → timeline around 11:29 PM. Sound not heard (can't in the pane); not run on a phone.
+- Left out: looping hour wheel like iOS (ends at 1 and 12).
+
 ### 2026-11-01 (4)
 - Drag merged. Branch `timeline/pinch`: `core/timeline/scales.ts` `zoomAfterPinch()` (log2 of the pinch, a small wobble stays put; also runs as a worklet; 2 tests). Timeline: two-finger pinch runs alongside the drag (`useSimultaneousGestures`), a centred chip shows the target rung, zoom switches on release. Web: ctrl/⌘ + wheel (how browsers report a trackpad pinch) does the same and stops the page from zooming. 60 tests.
 - Checked on the web build with wheel events: Hour → Minutes (chip "Minutes"), then back to Hours. Two-finger pinch can't be tried in the pane (no touch); not run on a phone.

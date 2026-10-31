@@ -8,7 +8,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { periodProgress, type Period } from '@/core/time/periods';
-import { addUnit, floorUnit, HOUR, type WeekStart } from '@/core/time/units';
+import { addUnit, DAY, floorUnit, HOUR, MINUTE, type WeekStart } from '@/core/time/units';
 import { getScale, SCALES, zoomAfterPinch, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { saveEntry, setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
@@ -20,6 +20,7 @@ import { ProgressFill, useLoop } from '@/ui/motion';
 import { usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
+import { JumpSheet, type JumpMode } from './JumpSheet';
 import { TimelineView } from './TimelineView';
 import { WeekStrip } from './WeekStrip';
 
@@ -74,6 +75,25 @@ export function TimelineScreen() {
       }),
     );
   };
+  // Calendar / clock buttons: jump the camera to any moment and bring the week strip along.
+  const [jump, setJump] = useState<JumpMode | null>(null);
+  const [jumpDay, setJumpDay] = useState(today);
+  const openJump = (mode: JumpMode) => {
+    setJumpDay(floorUnit(anchorTime.get(), 'day'));
+    setJump(mode);
+  };
+  const jumpToTime = (t: number) => {
+    setJump(null);
+    const live = Math.abs(t - Date.now()) < MINUTE;
+    setWeekShift(Math.round((floorUnit(t, 'week', 1, ws) - floorUnit(now, 'week', 1, ws)) / (7 * DAY)));
+    following.set(false);
+    anchorTime.set(
+      withTiming(live ? Date.now() : t, { duration: 450 }, (finished) => {
+        'worklet';
+        if (finished && live) following.set(true);
+      }),
+    );
+  };
   const openAdd = (at: number, layerId: string) =>
     router.push({ pathname: '/entry/[id]', params: { id: 'new', at: String(at), layer: layerId, scale: scaleId } });
 
@@ -89,6 +109,14 @@ export function TimelineScreen() {
           <Text numberOfLines={1} style={[styles.month, { color: c.ink }]} accessibilityRole="header">
             {new Date(shown).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accentText }}>{new Date(shown).getFullYear()}</Text>
           </Text>
+          <View style={styles.jumpButtons}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Pick a date" onPress={() => openJump('date')} style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
+              <Ionicons name="calendar-outline" size={17} color={c.ink} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Pick a time" onPress={() => openJump('time')} style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
+              <Ionicons name="time-outline" size={17} color={c.ink} />
+            </Pressable>
+          </View>
           {weekShift !== 0 && (
             <Pressable
               accessibilityRole="button"
@@ -205,6 +233,7 @@ export function TimelineScreen() {
         />
       </View>
 
+      <JumpSheet mode={jump} day={jumpDay} today={today} weekStart={ws} sound={calm !== 'on'} onJump={jumpToTime} onClose={() => setJump(null)} />
     </View>
   );
 }
@@ -239,6 +268,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, gap: 10 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   month: { flexShrink: 1, fontSize: 26, fontFamily: F.display, letterSpacing: -0.6 },
+  jumpButtons: { flexDirection: 'row', gap: 6 },
+  jumpButton: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   todayPill: { height: 30, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center' },
   todayText: { fontSize: 12.5, fontFamily: F.bold },
   hud: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 12, borderRadius: 14 },

@@ -94,6 +94,7 @@ Motion must feel **juicy but cheap**: only `transform` and `opacity` animate, so
 | Tap empty spot on timeline | Add sheet at that time and lane |
 | Tap card | Card actions (prototype: complete / undo) |
 | Drag / scroll | Travel in time; "Back to now" returns to live follow |
+| Calendar / clock icons (top corner) | Calendar: month grid (week start from Settings), tap a day → the timeline jumps there (9 AM, or now for today); Today button. Clock: iPhone-alarm-style wheels (hour, minute, AM/PM) with 3D tilt, momentum, a soft tick and selection haptic per notch (no sound in calm mode); jumps to that time on the day in view. |
 | Pinch (web: ctrl/⌘ + scroll, trackpad pinch) | Step the zoom ladder: each doubling of finger distance = one rung. A chip shows the rung you'll land on; it switches on release. Continuous zoom between rungs is later. |
 | Long-press card (350 ms), drag | Reschedule along the time axis; snaps to the zoom's slot, keeps the length. Moving before the hold ends scrolls the timeline instead. Moments only; whole days/weeks use the sheet's ‹ › |
 | Web: type in the capture bar | Goes to Inbox; natural-language time parsing later |
