@@ -22,6 +22,8 @@ type Props = {
   /** Sounds off in calm mode. */
   sound: boolean;
   onJump: (t: number) => void;
+  /** Switch between the calendar and the time wheels. */
+  onMode: (mode: JumpMode) => void;
   onClose: () => void;
 };
 
@@ -30,7 +32,7 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 const HALVES = ['AM', 'PM'];
 
 /** Calendar (pick a day) or iPhone-style time wheels (pick a time); the timeline jumps there. */
-export function JumpSheet({ mode, day, today, weekStart, sound, onJump, onClose }: Props) {
+export function JumpSheet({ mode, day, today, weekStart, sound, onJump, onMode, onClose }: Props) {
   const c = usePalette();
   return (
     <Modal visible={mode !== null} transparent animationType="fade" onRequestClose={onClose}>
@@ -38,7 +40,7 @@ export function JumpSheet({ mode, day, today, weekStart, sound, onJump, onClose 
         {/* Taps inside the card must not close it. */}
         <Pressable onPress={() => {}} accessible={false}>
           <Animated.View entering={ZoomIn.springify().damping(16)} style={[styles.card, { backgroundColor: c.panel, boxShadow: c.raised }]}>
-            {mode === 'date' && <Calendar day={day} today={today} weekStart={weekStart} onPick={(d) => onJump(d === today ? Date.now() : d + 9 * HOUR)} />}
+            {mode === 'date' && <Calendar day={day} today={today} weekStart={weekStart} onPick={(d) => onJump(d === today ? Date.now() : d + 9 * HOUR)} onTime={() => onMode('time')} />}
             {mode === 'time' && <TimeWheels day={day} sound={sound} onPick={onJump} />}
           </Animated.View>
         </Pressable>
@@ -47,7 +49,7 @@ export function JumpSheet({ mode, day, today, weekStart, sound, onJump, onClose 
   );
 }
 
-function Calendar({ day, today, weekStart, onPick }: { day: number; today: number; weekStart: WeekStart; onPick: (day: number) => void }) {
+function Calendar({ day, today, weekStart, onPick, onTime }: { day: number; today: number; weekStart: WeekStart; onPick: (day: number) => void; onTime: () => void }) {
   const c = usePalette();
   const [month, setMonth] = useState(() => floorUnit(day, 'month'));
   const grid = monthGrid(month, weekStart);
@@ -98,9 +100,15 @@ function Calendar({ day, today, weekStart, onPick }: { day: number; today: numbe
           );
         })}
       </View>
-      <Pressable accessibilityRole="button" onPress={() => onPick(today)} style={({ pressed }) => [styles.todayButton, { backgroundColor: c.chip }, pressed && styles.pressed]}>
-        <Text style={[styles.todayText, { color: c.ink }]}>Today</Text>
-      </Pressable>
+      <View style={styles.calendarActions}>
+        <Pressable accessibilityRole="button" onPress={() => onPick(today)} style={({ pressed }) => [styles.todayButton, styles.grow, { backgroundColor: c.chip }, pressed && styles.pressed]}>
+          <Text style={[styles.todayText, { color: c.ink }]}>Today</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={onTime} style={({ pressed }) => [styles.todayButton, styles.grow, styles.withIcon, { backgroundColor: c.chip }, pressed && styles.pressed]}>
+          <Ionicons name="time-outline" size={16} color={c.ink} />
+          <Text style={[styles.todayText, { color: c.ink }]}>Pick a time</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -153,6 +161,9 @@ const styles = StyleSheet.create({
   cell: { width: `${100 / 7}%`, height: 44, alignItems: 'center', justifyContent: 'center' },
   dayDot: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   dayText: { fontSize: 15, fontFamily: F.displaySemi, fontVariant: ['tabular-nums'] },
+  calendarActions: { flexDirection: 'row', gap: 8 },
+  grow: { flex: 1 },
+  withIcon: { flexDirection: 'row', gap: 6 },
   todayButton: { height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   todayText: { fontSize: 14, fontFamily: F.bold },
   wheels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },

@@ -6,16 +6,18 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { expandEntries } from '@/core/entries/repeat';
 import { summarizeDay } from '@/core/game/review';
 import { REVIEW_XP } from '@/core/game/xp';
-import { addUnit, floorUnit, HOUR, MINUTE } from '@/core/time/units';
+import { addUnit, floorUnit, HOUR, MINUTE, type WeekStart } from '@/core/time/units';
 import { saveEntry, useCompletedIds, useEntries, useLayers, type Entry } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
 import { useProgress } from '@/features/game/useProgress';
+import { useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { LAYER_COLORS, usePalette, type IconName } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { closeDay, useReviewedDays } from './data';
+import { PeriodBars } from './PeriodBars';
 
 const duration = (ms: number) => `${Math.floor(ms / HOUR)}h ${Math.round((ms % HOUR) / MINUTE)}m`;
 
@@ -23,6 +25,7 @@ const duration = (ms: number) => `${Math.floor(ms / HOUR)}h ${Math.round((ms % H
 export function ReviewScreen() {
   const c = usePalette();
   const now = useNow(60_000);
+  const weekStart: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
   const entries = useEntries();
   const completed = useCompletedIds();
   const layers = useLayers();
@@ -83,6 +86,10 @@ export function ReviewScreen() {
 
   return (
     <ScrollScreen title="Today's run" subtitle={new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} footer={footer}>
+      <Reveal index={0}>
+        <PeriodBars now={now} weekStart={weekStart} />
+      </Reveal>
+
       <Reveal index={0}>
         <View style={styles.tiles}>
           {tiles.map(([icon, label, value]) => (

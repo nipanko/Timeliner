@@ -6,13 +6,18 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** strategy + recurring tasks merged and deployed (1 Nov). Next strategy slice: Tick's voice + daily ritual (morning plan, evening close). Accounts + sync wait for email setup (`accounts/auth`, `sync/engine`; add `completions` to sync when merging).
+- **Resume with:** Nipanko looks at `ui/declutter`, then says merge (deploys). Further polish ideas: Settings could group Layers + Timeline under one row each; empty states with a first-task hint.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (20)
+- Recurring tasks merged and deployed. Nipanko: no voice; make it clean and easy to reach, not cluttered. Audit at 390 px: the Timeline had 6 control rows (timeline ≈ half the screen); Review / Journey / Settings were fine.
+- Branch `ui/declutter`: title opens the date picker (calendar + new *Pick a time*), calendar / clock buttons removed; Day/Week/Month/Year bars moved to Review (`features/review/PeriodBars.tsx`); zoom row + **View** button (`ViewSheet`: layers on/off with never-hide-last, direction, link to Settings) replace the layer chips and direction button. Timeline ≈ 70% of the screen.
+- Checked at 390 px: layout, View sheet (Life on → 4 lanes → off → 3), title → calendar → Pick a time → wheels, Review shows the bars.
+
 ### 2026-11-01 (19)
 - Nipanko picked the first strategy slice: recurring tasks. Branch `entries/repeat` (on top of `docs/strategy`): `core/entries/repeat.ts` (rules daily / weekly days, labels, DST-safe occurrences, `expandEntries`; 5 tests); migration 0009 (`entries.repeat`, `completions` table, sync-ready). Timeline expands repeats for its drawn window (next-up, lane counts, week-strip dots, reminders for 48 h), Review for today, XP / streaks / badges from the first occurrence to now. `setEntryDone` routes an occurrence to its completion row; focus Done completes today's occurrence; tapping an occurrence opens the series; drag is off for occurrences; Review hides "Tomorrow" for repeats. Add sheet: Repeat (Never / Daily / Weekdays / Weekly / Custom days) and "every …" in the plan sentence; Mark done hidden for a series. Backups carry `repeat` and completions. 77 tests.
 - Checked on the web build: created "Repeat test: stretch" daily → occurrences on every day at Day zoom; completed only today's (tomorrow became next up, XP 0 → 15, streak 1), survived a reload; deleting the series removed every occurrence and its XP. Fixed on the way: Custom collapsed into Weekly when the chosen day matched the date.
