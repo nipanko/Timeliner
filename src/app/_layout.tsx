@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { openDb, type Db } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
+import { SyncRunner } from '@/features/account/sync';
 import { Celebrations } from '@/features/game/Celebrations';
 import { useSetting } from '@/features/settings/data';
 import { setupNotifications } from '@/lib/notifications';
@@ -69,6 +70,7 @@ function AppStack() {
         <Stack.Screen name="account" options={{ presentation: 'modal' }} />
       </Stack>
       <Celebrations />
+      <SyncRunner />
     </GestureHandlerRootView>
   );
 }

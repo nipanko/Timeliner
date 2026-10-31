@@ -79,7 +79,7 @@ What web users get at this stage: the full app, private to their browser.
 
 **First sign-in:** the local data is uploaded and merged. Every row already has a UUID, so phone + web data merge without clashes.
 
-## 4. Sync (Phase 2b, with accounts)
+## 4. Sync (Phase 2b, with accounts) — engine built 1 Nov (`sync/engine`): generic `sync_rows` table, hand-rolled (option B)
 
 **Model:** the device stays the source of speed; the server keeps a copy.
 - Each table gets `userId`, `updatedAt` and `deletedAt`.

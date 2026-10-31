@@ -7,12 +7,14 @@ import { usePalette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { signOut, useProfile, useSession } from './data';
+import { runSync, useSyncStatus } from './sync';
 
 /** Settings › Account: sign in for backup / sync, or see who you're signed in as. Hidden if accounts aren't configured. */
 export function AccountSection() {
   const c = usePalette();
   const session = useSession();
   const profile = useProfile(session);
+  const sync = useSyncStatus();
   if (!supabase || session === undefined) return null;
 
   if (!session) {
@@ -31,7 +33,18 @@ export function AccountSection() {
   }
 
   const status =
-    profile?.consent === 'pending' ? 'Waiting for a parent to confirm' : profile === null ? 'Finish setting up your account' : 'Signed in. Sync arrives in the next update.';
+    profile?.consent === 'pending'
+      ? 'Waiting for a parent to confirm. Sync starts after that.'
+      : profile === null
+        ? 'Finish setting up your account'
+        : sync.state === 'syncing'
+          ? 'Syncing…'
+          : sync.state === 'error'
+            ? `Sync paused: ${sync.error}`
+            : sync.lastSyncedAt
+              ? `Synced ${new Date(sync.lastSyncedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+              : 'Ready to sync';
+  const canSync = !!profile && profile.consent !== 'pending';
   return (
     <View style={[styles.card, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
       <View style={styles.row}>
@@ -43,9 +56,16 @@ export function AccountSection() {
           <Text style={[styles.sub, { color: c.muted }]}>{status}</Text>
         </View>
       </View>
-      <Pressable accessibilityRole="button" onPress={signOut} style={({ pressed }) => [styles.signOut, { backgroundColor: c.chip }, pressed && styles.pressed]}>
-        <Text style={[styles.signOutText, { color: c.ink }]}>Sign out</Text>
-      </Pressable>
+      <View style={styles.buttons}>
+        {canSync && (
+          <Pressable accessibilityRole="button" onPress={runSync} style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: c.accent }, pressed && styles.pressed]}>
+            <Text style={[styles.signOutText, { color: c.accentInk }]}>Sync now</Text>
+          </Pressable>
+        )}
+        <Pressable accessibilityRole="button" onPress={signOut} style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: c.chip }, pressed && styles.pressed]}>
+          <Text style={[styles.signOutText, { color: c.ink }]}>Sign out</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -57,6 +77,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   title: { fontSize: 15, fontFamily: F.semi },
   sub: { fontSize: 12.5, fontFamily: F.text, lineHeight: 17 },
+  buttons: { flexDirection: 'row', gap: 8 },
   signOut: { height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { fontSize: 14, fontFamily: F.bold },
   pressed: { transform: [{ scale: 0.97 }] },

@@ -117,7 +117,7 @@ export function AccountScreen() {
 
         {step === 'done' && (
           <>
-            <Lead icon="checkmark-circle" title="You're signed in" text={teen ? "Next, a parent confirms your account. Until then everything works as before on this device." : 'Your account is ready. Syncing your timeline comes in the next update.'} />
+            <Lead icon="checkmark-circle" title="You're signed in" text={teen ? "Next, a parent confirms your account. Until then everything works as before on this device." : 'Your account is ready. Your timeline now syncs to it automatically.'} />
             <Primary label="Done" onPress={close} />
           </>
         )}
