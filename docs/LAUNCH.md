@@ -122,7 +122,7 @@ What web users get at this stage: the full app, private to their browser.
   - Cookie-less, privacy-friendly: Cloudflare Web Analytics for the website; PostHog (EU cloud) for in-app events.
   - Counts like "completed a task", never the task's text.
 - **Legal pages** before the public launch:
-  - Privacy Policy and Terms;
+  - Privacy Policy (draft: `docs/PRIVACY.md`, 1 Nov) and Terms;
   - a "What we store" page in plain English;
   - a contact for data requests.
   

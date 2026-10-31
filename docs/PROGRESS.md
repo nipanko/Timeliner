@@ -6,13 +6,16 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** `sync/prep` merged and deployed. Next: accounts (step 2) once Nipanko sends the Supabase Project URL + publishable key. Never take the service_role key or DB password.
+- **Resume with:** Nipanko reviews `docs/PRIVACY.md` (fill the [brackets]); later a lawyer review. Code still waiting: `accounts/auth` + `sync/engine` (need email setup). Next options: Delete account + parental consent, native phone run, Terms of Use.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (17)
+- Branch `docs/privacy`: `docs/PRIVACY.md`, a plain-English privacy policy draft written from the code (checked: no analytics or tracking libraries, fonts bundled, local notifications only with no push tokens, no data leaves the device without an account). Covers accounts (Supabase, Resend), children (under 13 no account, 13–17 parental consent, no tracking for under-18s per the DPDP Act), retention, rights, transfers. Placeholders in [brackets] and a before-publishing checklist: fill details, build Delete account, build parental consent, sign provider DPAs, lawyer review, publish at /privacy, write Terms of Use.
+
 ### 2026-11-01 (14)
 - Accounts + sync started. Nipanko chose: our own sync on Supabase, email-code sign-in, parental consent built now (needs Resend + a domain: Nipanko knows), and is creating the Supabase project (Mumbai).
 - Branch `sync/prep` (no server yet): migration 0008 adds `updatedAt` everywhere and `deletedAt` where deletes exist, as plain ADD COLUMNs with a backfill (the first generated version rebuilt `layers` / `entries` and toggled foreign keys mid-way: rejected as risky). Drizzle stamps `updatedAt` automatically. Deletes are tombstones; all 8 reads skip them. Backup format v1 keeps tombstones and still restores older backups. `core/sync.ts` merge rule (last write wins; converges). 72 tests.
