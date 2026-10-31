@@ -4,11 +4,11 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot and drag across lanes (all merged 1 Nov). 65 tests, typecheck and lint green.
-- **Resume with:** Nipanko reviews `docs/LAUNCH.md` and the web app on `web/app`, then says merge. Next per LAUNCH.md §9: GitHub repo + Cloudflare Pages (Nipanko creates the accounts), Safari/iPhone test, CI, Export/Import, then the phone run.
+- **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes and the web app (installable, offline; all merged 1 Nov). 65 tests, typecheck and lint green.
+- **Resume with:** web app merged. Next per `docs/LAUNCH.md` §9: Nipanko creates the GitHub private repo + Cloudflare account → connect Pages (build `npm ci && npm run build:web`, output `dist`) → test Safari/iPhone; meanwhile I can add GitHub CI and Export/Import in Settings.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
-- **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
+- **Nipanko's to-dos:** create GitHub private repo + Cloudflare account (business email, 2-factor); decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
