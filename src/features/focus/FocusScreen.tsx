@@ -8,6 +8,7 @@ import { focusedMs } from '@/core/game/focus';
 import { setDone, useEntry, useLayers } from '@/features/entries/data';
 import { useNow } from '@/hooks/useNow';
 import { cancelFocusEnd, scheduleFocusEnd } from '@/lib/notifications';
+import { ProgressFill } from '@/ui/motion';
 import { usePalette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
@@ -76,12 +77,7 @@ export function FocusScreen({ id }: { id: string }) {
           <Text style={[styles.time, { color: c.ink }]}>{left >= 0 ? mmss(left) : `+${mmss(left)}`}</Text>
           <Text style={[styles.sub, { color: c.muted }]}>{!active ? 'ready' : paused ? 'paused' : left >= 0 ? 'left' : 'over time, wrap up'}</Text>
           <View style={[styles.track, { backgroundColor: c.chip, boxShadow: c.pressedIn }]}>
-            <LinearGradient
-              colors={c.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.fill, { width: `${Math.min(100, (focused / planned) * 100)}%`, boxShadow: c.glow }]}
-            />
+            <ProgressFill value={focused / planned} colors={c.gradient} />
           </View>
         </View>
       </View>
@@ -117,7 +113,6 @@ const styles = StyleSheet.create({
   time: { fontSize: 60, fontFamily: F.display, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
   sub: { fontSize: 13, fontFamily: F.bold },
   track: { width: 170, height: 10, borderRadius: 6, overflow: 'hidden', marginTop: 8 },
-  fill: { height: '100%', borderRadius: 6 },
   buttons: { flexDirection: 'row', gap: 10 },
   button: { flex: 1, height: 58, borderRadius: 18, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
   primary: { flex: 1.6, height: 58, borderRadius: 18, overflow: 'hidden' },

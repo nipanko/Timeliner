@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,6 +11,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withDecay,
+  withSequence,
   withTiming,
   ZoomIn,
   type SharedValue,
@@ -24,6 +25,7 @@ import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
 import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
 import type { Entry, Layer } from '@/features/entries/data';
 import { useNow } from '@/hooks/useNow';
+import { useLoop } from '@/ui/motion';
 import { KIND_ICONS, usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
@@ -135,6 +137,9 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
     return vertical ? [{ translateY: d }] : [{ translateX: d }];
   };
   const contentStyle = useAnimatedStyle(() => ({ transform: along((-sign * (anchorTime.get() - origin) * L) / span) }));
+  // The clock pill pulses gently (DESIGN.md §2); off with reduce motion.
+  const pulse = useLoop(1800);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + 0.06 * pulse.get() }] }));
   const nowStyle = useAnimatedStyle(() => {
     const p = ANCHOR + (nowTime.get() - anchorTime.get()) / span;
     return { opacity: p < -0.02 || p > 1.02 ? 0 : 1, transform: along((sign > 0 ? p : 1 - p) * L) };
@@ -219,9 +224,9 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
 
               <Animated.View pointerEvents="none" style={[styles.abs, zeroAlong, styles.visible, nowStyle]}>
                 <View style={[styles.abs, vertical ? { top: -1.5, height: 3, left: GUT - 4, right: 0 } : { left: -1.5, width: 3, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accentText, boxShadow: c.glow }]} />
-                <View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accentText, boxShadow: c.glow }]}>
+                <Animated.View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accentText, boxShadow: c.glow }, pulseStyle]}>
                   <ClockText color={c.ground} />
-                </View>
+                </Animated.View>
               </Animated.View>
             </View>
           </GestureDetector>
@@ -269,6 +274,17 @@ type ItemProps = {
 
 function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, now }: ItemProps) {
   const { entry, shape } = it;
+  // Completing a card pops it (1 → 1.08 → 0.97 → 1); an active task's ring breathes (DESIGN.md §2).
+  const pop = useSharedValue(1);
+  const wasDone = useRef(entry.done);
+  useEffect(() => {
+    if (entry.done && !wasDone.current) pop.set(withSequence(withTiming(1.08, { duration: 120 }), withTiming(0.97, { duration: 120 }), withTiming(1, { duration: 210 })));
+    wasDone.current = entry.done;
+  }, [entry.done, pop]);
+  const active = entry.kind === 'task' && !entry.done && entry.end !== null && entry.start <= now && now < entry.end;
+  const breath = useLoop(2000, active);
+  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.get() }] }));
+  const breathStyle = useAnimatedStyle(() => ({ opacity: 0.2 + 0.6 * breath.get() }));
   const sub = laneW / it.columns;
   const start = laneStart + it.column * sub;
   if (shape === 'band') {
@@ -290,41 +306,46 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
   const checkable = entry.kind !== 'note' && !flatPill && sub - 8 >= 96;
   const ink = skipped ? c.muted : layer.color.ink;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={() => onOpen(entry.id)}
-      style={({ pressed }) => [styles.abs, frame, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }, pressed && styles.pressed]}
-    >
-      <View style={styles.row}>
-        {/* Tasks wear their layer's icon; the other kinds say what they are. */}
-        <Ionicons name={entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind]} size={12} color={ink} />
-        <Text numberOfLines={1} style={[styles.itemTitle, { color: ink }, entry.done && styles.struck]}>
-          {entry.title}
-        </Text>
-        {checkable && (
-          <Pressable
-            accessibilityRole="checkbox"
-            aria-checked={entry.done}
-            accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
-            hitSlop={11}
-            onPress={() => onToggleDone(entry)}
-            style={({ pressed }) => [styles.check, { borderColor: skipped ? c.lineStrong : layer.color.ink, backgroundColor: entry.done ? layer.color.ink : 'transparent' }, pressed && styles.pressed]}
-          >
-            {entry.done && (
-              <Animated.View entering={ZoomIn.springify()}>
-                <Ionicons name="checkmark" size={13} color={layer.color.fill} />
-              </Animated.View>
-            )}
-          </Pressable>
+    <Animated.View style={[styles.abs, frame, popStyle]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={() => onOpen(entry.id)}
+        style={({ pressed }) => [styles.abs, styles.fill, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }, pressed && styles.pressed]}
+      >
+        <View style={styles.row}>
+          {/* Tasks wear their layer's icon; the other kinds say what they are. */}
+          <Ionicons name={entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind]} size={12} color={ink} />
+          <Text numberOfLines={1} style={[styles.itemTitle, { color: ink }, entry.done && styles.struck]}>
+            {entry.title}
+          </Text>
+          {checkable && (
+            <Pressable
+              accessibilityRole="checkbox"
+              aria-checked={entry.done}
+              accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
+              hitSlop={11}
+              onPress={() => onToggleDone(entry)}
+              style={({ pressed }) => [styles.check, { borderColor: skipped ? c.lineStrong : layer.color.ink, backgroundColor: entry.done ? layer.color.ink : 'transparent' }, pressed && styles.pressed]}
+            >
+              {entry.done && (
+                <Animated.View entering={ZoomIn.springify()}>
+                  <Ionicons name="checkmark" size={13} color={layer.color.fill} />
+                </Animated.View>
+              )}
+            </Pressable>
+          )}
+        </View>
+        {showTime && entry.end !== null && (
+          <Text numberOfLines={1} style={[styles.itemTime, { color: layer.color.ink }]}>
+            {timeFmt.format(entry.start)}–{timeFmt.format(entry.end)}
+          </Text>
         )}
-      </View>
-      {showTime && entry.end !== null && (
-        <Text numberOfLines={1} style={[styles.itemTime, { color: layer.color.ink }]}>
-          {timeFmt.format(entry.start)}–{timeFmt.format(entry.end)}
-        </Text>
+      </Pressable>
+      {active && (
+        <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, styles.breath, shape === 'card' ? styles.card : styles.pillItem, { borderColor: layer.color.ink }, breathStyle]} />
       )}
-    </Pressable>
+    </Animated.View>
   );
 }
 
@@ -356,6 +377,7 @@ const styles = StyleSheet.create({
   itemTitle: { flex: 1, fontSize: 12.5, fontFamily: F.semi, letterSpacing: -0.1 },
   check: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   pressed: { transform: [{ scale: 0.97 }] },
+  breath: { borderWidth: 2 },
   itemTime: { fontSize: 10.5, fontFamily: F.semi, opacity: 0.8, fontVariant: ['tabular-nums'] },
   struck: { textDecorationLine: 'line-through' },
   nowButton: { position: 'absolute', right: 10, bottom: 10, height: 44, paddingHorizontal: 16, borderRadius: 999, justifyContent: 'center' },

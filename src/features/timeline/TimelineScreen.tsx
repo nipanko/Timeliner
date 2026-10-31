@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { periodProgress, type Period } from '@/core/time/periods';
@@ -15,6 +15,7 @@ import { useProgress } from '@/features/game/useProgress';
 import { setSetting, useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { syncEntryNotifications } from '@/lib/notifications';
+import { ProgressFill, useLoop } from '@/ui/motion';
 import { usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
@@ -108,12 +109,12 @@ export function TimelineScreen() {
             <Text style={[styles.lv, { color: c.accentText }]}>LV {lv.level}</Text>
             <View style={styles.xpCol}>
               <View style={[styles.xpTrack, { backgroundColor: c.chip }]}>
-                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.xpFill, { width: `${(lv.into / lv.need) * 100}%`, boxShadow: c.glow }]} />
+                <ProgressFill value={lv.into / lv.need} colors={c.gradient} />
               </View>
               <Text style={[styles.micro, { color: c.muted }]}>{lv.into}/{lv.need} XP</Text>
             </View>
             <View style={styles.streakRow}>
-              <Ionicons name="flame" size={16} color={run.days ? '#FF9F43' : c.muted} />
+              <Flame lit={run.days > 0} muted={c.muted} />
               <Text style={[styles.streak, { color: c.ink }]}>{run.days}</Text>
             </View>
           </Pressable>
@@ -213,6 +214,17 @@ function Segments({ value, c }: { value: number; c: Palette }) {
   );
 }
 
+/** The streak flame flickers while the streak is alive (DESIGN.md §2). */
+function Flame({ lit, muted }: { lit: boolean; muted: string }) {
+  const t = useLoop(1600, lit);
+  const flicker = useAnimatedStyle(() => ({ transform: [{ scale: 1 + 0.12 * t.get() }, { rotate: `${Math.sin(t.get() * Math.PI * 2) * 4}deg` }], opacity: 0.85 + 0.15 * t.get() }));
+  return (
+    <Animated.View style={flicker}>
+      <Ionicons name="flame" size={16} color={lit ? '#FF9F43' : muted} />
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, gap: 10, overflow: 'hidden' },
   glowLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', pointerEvents: 'none' },
@@ -226,7 +238,6 @@ const styles = StyleSheet.create({
   lv: { fontSize: 14, fontFamily: F.display, letterSpacing: 0.5 },
   xpCol: { width: 62, gap: 3 },
   xpTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
-  xpFill: { height: '100%', borderRadius: 3 },
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   streak: { fontSize: 16, fontFamily: F.display, fontVariant: ['tabular-nums'] },
   micro: { fontSize: 10, fontFamily: F.semi, letterSpacing: 0.6, fontVariant: ['tabular-nums'] },

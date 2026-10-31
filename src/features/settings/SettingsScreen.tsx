@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Direction } from '@/core/timeline/viewport';
 import { useProgress } from '@/features/game/useProgress';
+import { ProgressFill } from '@/ui/motion';
 import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { PALETTES, usePalette, type IconName, type Palette, type ThemePreference } from '@/ui/theme';
 import { F } from '@/ui/type';
@@ -48,12 +49,7 @@ export function SettingsScreen() {
             </View>
           </View>
           <View style={[styles.track, { backgroundColor: c.chip }]}>
-            <LinearGradient
-              colors={c.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.trackFill, { width: `${(p.level.into / p.level.need) * 100}%`, boxShadow: c.glow }]}
-            />
+            <ProgressFill value={p.level.into / p.level.need} colors={c.gradient} />
           </View>
           <View style={styles.stats}>
             <Stat c={c} icon="flame" value={String(p.streak.days)} label="Day streak" />
@@ -189,7 +185,6 @@ const styles = StyleSheet.create({
   level: { fontSize: 26, fontFamily: F.display, letterSpacing: -0.5 },
   small: { fontSize: 13, fontFamily: F.text },
   track: { height: 8, borderRadius: 5, overflow: 'hidden' },
-  trackFill: { height: '100%', borderRadius: 5 },
   stats: { flexDirection: 'row', gap: 8 },
   stat: { flex: 1, borderRadius: 16, padding: 10, gap: 2 },
   statValue: { fontSize: 20, fontFamily: F.display, fontVariant: ['tabular-nums'] },
