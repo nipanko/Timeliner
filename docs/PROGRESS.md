@@ -6,13 +6,18 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** Nipanko connects Cloudflare Pages to the repo (build `npm run build:web`, output `dist`, `NODE_VERSION=22`), then we test the live URL incl. Safari / iPhone.
+- **Resume with:** Nipanko OKs merging `fix/safari-scroll` (deploys to Cloudflare) and the branch-timeline design; then retest Safari / iPhone.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (11)
+- Site live on Cloudflare Pages (Nipanko; the `timeliner.pages.dev` name belongs to someone else's project, our address still to note). Safari showed "Could not open your data: The operation failed for an unknown transient reason".
+- Branch `fix/safari-scroll`: expo-sqlite's web worker can't retry once its OPFS pool fails (later calls hit "Invalid VFS state"), so the root layout reloads once with a fresh worker (sessionStorage flag) and otherwise shows a helpful screen (other tabs, Private Browsing, old iOS) with Try again. Plain wheel / trackpad scrolling now travels the timeline without end. Not verifiable here (no Safari).
+- Proposed the branch timeline redesign (one straight trunk for time, layers branch off as nodes, Tick walks the trunk, goals as checkpoints); waiting for Nipanko's OK.
+
 ### 2026-11-01 (10)
 - Web app merged. Branch `ci/github`: `.github/workflows/ci.yml` (npm ci → typecheck → `expo lint --no-cache` → jest → build:web on every PR and push to main; typecheck doesn't need the generated route types). Runs once the GitHub repo exists.
 - Branch `settings/backup`: `core/backup.ts` (format v1; validates every table, field type, enum, link and duplicate; drops unknown fields; 4 tests), `db/backup.ts` (export all; replace all in one transaction, parents first), Settings › Your data (web: download a file / restore from a file with a confirm card; a safety copy of the current data downloads first; phone: export via the share sheet, restore later). `index.html` asks for persistent storage. 69 tests.
