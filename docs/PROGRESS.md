@@ -6,7 +6,7 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries recurring tasks on `entries/repeat` (stacked on `docs/strategy`), then says merge (both). Next strategy slice: Tick's voice + daily ritual. Accounts + sync still wait for email setup.
+- **Resume with:** strategy + recurring tasks merged and deployed (1 Nov). Next strategy slice: Tick's voice + daily ritual (morning plan, evening close). Accounts + sync wait for email setup (`accounts/auth`, `sync/engine`; add `completions` to sync when merging).
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
