@@ -1,3 +1,4 @@
+import { isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
 
@@ -15,10 +16,10 @@ import { useNow } from '@/hooks/useNow';
  */
 export function useProgress() {
   const db = getDb();
-  const e = useLiveQuery(db.select().from(entries));
-  const s = useLiveQuery(db.select().from(focusSessions));
+  const e = useLiveQuery(db.select().from(entries).where(isNull(entries.deletedAt)));
+  const s = useLiveQuery(db.select().from(focusSessions).where(isNull(focusSessions.deletedAt)));
   const d = useLiveQuery(db.select().from(dayLogs));
-  const m = useLiveQuery(db.select().from(milestones));
+  const m = useLiveQuery(db.select().from(milestones).where(isNull(milestones.deletedAt)));
   const now = useNow(60_000);
 
   return useMemo(() => {

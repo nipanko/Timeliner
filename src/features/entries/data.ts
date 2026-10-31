@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 import { useMemo } from 'react';
@@ -27,7 +27,7 @@ const toEntry = (r: EntryRow): Entry => ({
 });
 
 export function useLayers(): Layer[] {
-  const { data } = useLiveQuery(getDb().select().from(layers).orderBy(asc(layers.sort)));
+  const { data } = useLiveQuery(getDb().select().from(layers).where(isNull(layers.deletedAt)).orderBy(asc(layers.sort)));
   return useMemo(
     () =>
       data.map((r) => {
@@ -40,13 +40,13 @@ export function useLayers(): Layer[] {
 
 // shortcut: loads every entry; switch to the windowed overlap query (ARCHITECTURE.md §3) once people have thousands.
 export function useEntries(): Entry[] {
-  const { data } = useLiveQuery(getDb().select().from(entries));
+  const { data } = useLiveQuery(getDb().select().from(entries).where(isNull(entries.deletedAt)));
   return useMemo(() => data.map(toEntry), [data]);
 }
 
 /** One entry for the edit sheet; `undefined` while loading or if it was deleted. */
 export function useEntry(id: string | null): Entry | undefined {
-  const { data } = useLiveQuery(getDb().select().from(entries).where(eq(entries.id, id ?? '')), [id]);
+  const { data } = useLiveQuery(getDb().select().from(entries).where(and(eq(entries.id, id ?? ''), isNull(entries.deletedAt))), [id]);
   return data[0] ? toEntry(data[0]) : undefined;
 }
 
@@ -62,10 +62,11 @@ export async function setDone(id: string, done: boolean) {
 }
 
 export async function deleteEntry(id: string) {
-  // SQLite only cascades with foreign keys switched on, so remove the sessions explicitly.
-  await getDb().delete(focusSessions).where(eq(focusSessions.entryId, id));
-  await getDb().delete(milestones).where(eq(milestones.goalId, id));
-  await getDb().delete(entries).where(eq(entries.id, id));
+  // Tombstones, not deletes, so the deletion can sync to other devices; children go with the entry.
+  const deletedAt = Date.now();
+  await getDb().update(focusSessions).set({ deletedAt }).where(eq(focusSessions.entryId, id));
+  await getDb().update(milestones).set({ deletedAt }).where(eq(milestones.goalId, id));
+  await getDb().update(entries).set({ deletedAt }).where(eq(entries.id, id));
 }
 
 export async function setLayerVisible(id: string, visible: boolean) {

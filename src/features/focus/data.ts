@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 import { useMemo } from 'react';
@@ -10,7 +10,7 @@ import { focusSessions } from '@/db/schema';
 export type Session = FocusSession & { id: string; entryId: string };
 
 export function useSessions(): Session[] {
-  return useLiveQuery(getDb().select().from(focusSessions)).data;
+  return useLiveQuery(getDb().select().from(focusSessions).where(isNull(focusSessions.deletedAt))).data;
 }
 
 /** Total focused time per entry, for the calibration bonus. */

@@ -57,6 +57,13 @@
       "when": 1793429940847,
       "tag": "0007_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793466818200,
+      "tag": "0008_sync-columns",
+      "breakpoints": true
     }
   ]
 }

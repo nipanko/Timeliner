@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 
@@ -9,7 +9,7 @@ export type InboxItem = typeof inbox.$inferSelect;
 
 /** Newest first. */
 export function useInbox(): InboxItem[] {
-  return useLiveQuery(getDb().select().from(inbox).orderBy(desc(inbox.createdAt))).data;
+  return useLiveQuery(getDb().select().from(inbox).where(isNull(inbox.deletedAt)).orderBy(desc(inbox.createdAt))).data;
 }
 
 export async function addToInbox(title: string) {
@@ -18,5 +18,5 @@ export async function addToInbox(title: string) {
 }
 
 export async function removeFromInbox(id: string) {
-  await getDb().delete(inbox).where(eq(inbox.id, id));
+  await getDb().update(inbox).set({ deletedAt: Date.now() }).where(eq(inbox.id, id));
 }

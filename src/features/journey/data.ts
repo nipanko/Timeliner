@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, isNull } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 
@@ -8,7 +8,7 @@ import { milestones } from '@/db/schema';
 export type Milestone = typeof milestones.$inferSelect;
 
 export function useMilestones(): Milestone[] {
-  return useLiveQuery(getDb().select().from(milestones).orderBy(asc(milestones.sort))).data;
+  return useLiveQuery(getDb().select().from(milestones).where(isNull(milestones.deletedAt)).orderBy(asc(milestones.sort))).data;
 }
 
 export async function addMilestone(goalId: string, title: string, sort: number) {
@@ -20,5 +20,5 @@ export async function setMilestoneReached(m: Milestone, reached: boolean) {
 }
 
 export async function deleteMilestone(m: Milestone) {
-  await getDb().delete(milestones).where(eq(milestones.id, m.id));
+  await getDb().update(milestones).set({ deletedAt: Date.now() }).where(eq(milestones.id, m.id));
 }

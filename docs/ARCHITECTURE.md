@@ -74,6 +74,8 @@ Tests sit next to the code: `src/core/game/xp.test.ts`.
 
 ## 3. Data model (expo-sqlite + Drizzle)
 
+**Sync columns (migration 0008):** every table has `updatedAt` (stamped by Drizzle `$defaultFn` / `$onUpdateFn` on each insert and update, so no write can forget it); tables with deletes (`layers`, `entries`, `focus_sessions`, `milestones`, `inbox`) have `deletedAt`: deleting writes a tombstone and every read filters `deletedAt IS NULL`. Merge rule in `core/sync.ts`: last write wins per row; the server stores only strictly newer rows, a device adopts server rows that are newer or equal (so devices converge).
+
 All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a whole day / week / month / year" also keep the IANA time zone they were made in, so "November" stays November if you travel.
 
 | Table | Columns | Notes |
