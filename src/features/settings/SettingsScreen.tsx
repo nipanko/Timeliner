@@ -3,19 +3,27 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { Direction } from '@/core/timeline/viewport';
 import { useProgress } from '@/features/game/useProgress';
 import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { PALETTES, usePalette, type IconName, type Palette, type ThemePreference } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { setSetting, useSetting } from './data';
+import { LayersSection } from './LayersSection';
 
 const APPEARANCES: [ThemePreference, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+const DIRECTIONS: [Direction, string][] = [['down', '↓'], ['up', '↑'], ['right', '→'], ['left', '←']];
+const WEEK_STARTS: [string, string][] = [['1', 'Mon'], ['0', 'Sun']];
+const CALM: [string, string][] = [['off', 'Off'], ['on', 'On']];
 
 export function SettingsScreen() {
   const c = usePalette();
   const p = useProgress();
   const theme = useSetting<ThemePreference>('theme', 'system');
+  const direction = useSetting<Direction>('direction', 'down');
+  const weekStart = useSetting<string>('weekStart', '1');
+  const calm = useSetting<string>('calm', 'off');
   const earned = p.badges.filter((b) => b.earned).length;
 
   const choose = (t: ThemePreference) => {
@@ -64,7 +72,7 @@ export function SettingsScreen() {
               <Pressable
                 key={t}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
+                aria-checked={on}
                 accessibilityLabel={`${label} appearance`}
                 onPress={() => choose(t)}
                 style={({ pressed }) => [
@@ -95,6 +103,22 @@ export function SettingsScreen() {
       </Reveal>
 
       <Reveal index={2}>
+        <Text style={[styles.section, { color: c.muted }]}>LAYERS</Text>
+        <LayersSection />
+        <Text style={[styles.hint, { color: c.muted }]}>Tap a layer&apos;s badge for its color and icon.</Text>
+      </Reveal>
+
+      <Reveal index={3}>
+        <Text style={[styles.section, { color: c.muted }]}>TIMELINE</Text>
+        <View style={[styles.options, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
+          <Option c={c} label="Direction" value={direction} choices={DIRECTIONS} onPick={(v) => setSetting('direction', v)} />
+          <Option c={c} label="Week starts" value={weekStart} choices={WEEK_STARTS} onPick={(v) => setSetting('weekStart', v)} />
+          <Option c={c} label="Calm mode" value={calm} choices={CALM} onPick={(v) => setSetting('calm', v)} />
+        </View>
+        <Text style={[styles.hint, { color: c.muted }]}>Calm mode keeps XP and levels but drops confetti and vibration.</Text>
+      </Reveal>
+
+      <Reveal index={4}>
         <Text style={[styles.section, { color: c.muted }]}>ABOUT</Text>
         <View style={[styles.about, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           <Ionicons name="lock-closed" size={16} color={c.muted} />
@@ -112,6 +136,31 @@ function Stat({ c, icon, value, label }: { c: Palette; icon: IconName; value: st
       <Ionicons name={icon} size={16} color={c.accentText} />
       <Text style={[styles.statValue, { color: c.ink }]}>{value}</Text>
       <Text style={[styles.statLabel, { color: c.muted }]}>{label}</Text>
+    </View>
+  );
+}
+
+function Option<T extends string>({ c, label, value, choices, onPick }: { c: Palette; label: string; value: T; choices: [T, string][]; onPick: (v: T) => void }) {
+  return (
+    <View style={styles.option}>
+      <Text style={[styles.optionLabel, { color: c.ink }]}>{label}</Text>
+      <View style={[styles.segment, { backgroundColor: c.chip }]}>
+        {choices.map(([v, text]) => {
+          const on = v === value;
+          return (
+            <Pressable
+              key={v}
+              accessibilityRole="radio"
+              aria-checked={on}
+              accessibilityLabel={`${label}: ${v}`}
+              onPress={() => onPick(v)}
+              style={[styles.segmentItem, on && { backgroundColor: c.accent, boxShadow: c.selected }]}
+            >
+              <Text style={[styles.segmentText, { color: on ? c.accentInk : c.ink }]}>{text}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -159,4 +208,10 @@ const styles = StyleSheet.create({
   hint: { fontSize: 12, fontFamily: F.text, marginTop: 8, marginLeft: 4 },
   about: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 14 },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
+  options: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
+  option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, gap: 12 },
+  optionLabel: { fontSize: 14, fontFamily: F.semi },
+  segment: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 2 },
+  segmentItem: { minWidth: 44, height: 36, paddingHorizontal: 10, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 13, fontFamily: F.bold },
 });

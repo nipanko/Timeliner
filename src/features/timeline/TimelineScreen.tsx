@@ -7,11 +7,12 @@ import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { periodProgress, type Period } from '@/core/time/periods';
-import { addUnit, floorUnit, HOUR } from '@/core/time/units';
+import { addUnit, floorUnit, HOUR, type WeekStart } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useProgress } from '@/features/game/useProgress';
+import { setSetting, useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { syncEntryNotifications } from '@/lib/notifications';
 import { usePalette, type Palette } from '@/ui/theme';
@@ -30,7 +31,8 @@ export function TimelineScreen() {
   const insets = useSafeAreaInsets();
   const now = useNow(10_000);
   const [scaleId, setScaleId] = useState<ScaleId>('hour');
-  const [direction, setDirection] = useState<Direction>('down');
+  const direction = useSetting<Direction>('direction', 'down');
+  const ws: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
   const [weekShift, setWeekShift] = useState(0);
   const allLayers = useLayers();
   const entries = useEntries();
@@ -46,7 +48,7 @@ export function TimelineScreen() {
   }, [entries]);
 
   const today = floorUnit(now, 'day');
-  const weekStart = addUnit(floorUnit(now, 'week'), 'week', weekShift);
+  const weekStart = addUnit(floorUnit(now, 'week', 1, ws), 'week', weekShift);
   // The title follows the week in the strip (its Thursday decides the month).
   const shown = weekShift ? addUnit(weekStart, 'day', 3) : now;
   const colorById = new Map(allLayers.map((l) => [l.id, l.color.fill]));
@@ -121,7 +123,7 @@ export function TimelineScreen() {
 
         <Pressable accessibilityRole="button" accessibilityLabel="Open today's review" onPress={() => router.push('/review')} style={[styles.complications, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           {PERIODS.map(([label, period]) => {
-            const f = periodProgress(now, period);
+            const f = periodProgress(now, period, ws);
             return (
               <View key={period} style={styles.complication}>
                 <View style={styles.compText}>
@@ -172,7 +174,7 @@ export function TimelineScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Timeline runs ${direction}. Change direction`}
-            onPress={() => setDirection(NEXT_DIRECTION[direction])}
+            onPress={() => setSetting('direction', NEXT_DIRECTION[direction])}
             style={[styles.dirButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
           >
             <Text style={[styles.dirText, { color: c.ink }]}>{ARROW[direction]}</Text>

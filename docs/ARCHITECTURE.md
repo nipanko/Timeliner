@@ -78,13 +78,13 @@ All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a who
 
 | Table | Columns | Notes |
 |---|---|---|
-| `layers` | `id`, `name`, `color`, `icon`, `sort`, `visible`, `createdAt`, `updatedAt` | A lane on the timeline (Work, Study, Health…). |
+| `layers` | `id`, `name`, `color` (key into `LAYER_COLORS`), `icon` (Ionicons name, migration 0006), `sort`, `visible`, `createdAt`, `updatedAt` | A lane on the timeline (Work, Study, Health…). |
 | `entries` | `id`, `layerId`, `kind` (`task` \| `todo` \| `note` \| `reminder`), `title`, `body?`, `startAt`, `endAt?`, `granularity` (`moment` \| `day` \| `week` \| `month` \| `year`), `tz`, `status` (`planned` \| `done` \| `cancelled`), `doneAt?`, `remindOffsetsMin` (JSON int[]), `treat?`, `createdAt`, `updatedAt` | Tasks have `endAt` (a time block). Todos, notes and reminders are points (`endAt` null). A month goal = task with `granularity: month`, start/end at month edges. |
 | `focus_sessions` | `id`, `entryId`, `startedAt`, `endedAt?`, `pausedMs`, `outcome?` (`done` \| `stopped`) | Actual time for planned-vs-actual. |
 | `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | **Not built yet.** Added when rewards come from things that aren't entries (focus sessions, breaks, reviews, league). Until then XP is derived (§5). |
 | `day_logs` | `day` (local `YYYY-MM-DD`), `reviewedAt?`, `freezeUsed` | Streak and review bookkeeping. |
 | `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | **Not built yet.** Badges are derived from entries (`core/game/badges.ts`). Celebrations diff progress in memory (§11), so an unlock plays when it happens while the app is open. Add this table when unlocks earned while the app was closed (or on another device) must play too. |
-| `settings` | `key`, `value` | App preferences as text, e.g. `theme` = `system` \| `light` \| `dark`. |
+| `settings` | `key`, `value` | App preferences as text: `theme` (`system` \| `light` \| `dark`), `direction` (`down` \| `up` \| `right` \| `left`), `weekStart` (`1` Monday \| `0` Sunday), `calm` (`on` \| `off`). |
 
 A **goal** is a long task (`granularity` month or year). Its **milestones** live in their own `milestones` table (`id`, `goalId`, `title`, `sort`, `doneAt?`, `createdAt`), since they are not on the timeline; on the Journey screen the goal is a branch and the milestones are its stops. Each reached milestone earns 50 XP.
 

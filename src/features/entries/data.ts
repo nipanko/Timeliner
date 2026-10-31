@@ -7,9 +7,9 @@ import type { EntryKind, Granularity } from '@/core/entries/timing';
 import type { TimelineEntry } from '@/core/timeline/layout';
 import { getDb } from '@/db/client';
 import { entries, focusSessions, layers, milestones } from '@/db/schema';
-import { LAYER_COLORS, type LayerColor } from '@/ui/theme';
+import { LAYER_COLORS, type IconName, type LayerColor, type LayerColorKey } from '@/ui/theme';
 
-export type Layer = { id: string; name: string; color: LayerColor; visible: boolean };
+export type Layer = { id: string; name: string; colorKey: LayerColorKey; color: LayerColor; icon: IconName; visible: boolean };
 export type Entry = TimelineEntry & { kind: EntryKind; title: string; granularity: Granularity; done: boolean; createdAt: number };
 export type EntryDraft = Pick<Entry, 'layerId' | 'kind' | 'title' | 'start' | 'end' | 'granularity'>;
 
@@ -29,7 +29,11 @@ const toEntry = (r: EntryRow): Entry => ({
 export function useLayers(): Layer[] {
   const { data } = useLiveQuery(getDb().select().from(layers).orderBy(asc(layers.sort)));
   return useMemo(
-    () => data.map((r) => ({ id: r.id, name: r.name, visible: r.visible, color: LAYER_COLORS[r.color as keyof typeof LAYER_COLORS] ?? LAYER_COLORS.yellow })),
+    () =>
+      data.map((r) => {
+        const colorKey = r.color in LAYER_COLORS ? (r.color as LayerColorKey) : 'yellow';
+        return { id: r.id, name: r.name, visible: r.visible, colorKey, color: LAYER_COLORS[colorKey], icon: (r.icon ?? 'ellipse') as IconName };
+      }),
     [data],
   );
 }
@@ -66,4 +70,14 @@ export async function deleteEntry(id: string) {
 
 export async function setLayerVisible(id: string, visible: boolean) {
   await getDb().update(layers).set({ visible, updatedAt: Date.now() }).where(eq(layers.id, id));
+}
+
+export async function updateLayer(id: string, change: { name?: string; color?: LayerColorKey; icon?: IconName }) {
+  await getDb().update(layers).set({ ...change, updatedAt: Date.now() }).where(eq(layers.id, id));
+}
+
+/** A new layer goes last and starts visible. */
+export async function addLayer(name: string, color: LayerColorKey, icon: IconName, sort: number) {
+  const now = Date.now();
+  await getDb().insert(layers).values({ id: randomUUID(), name, color, icon, sort, visible: true, createdAt: now, updatedAt: now });
 }

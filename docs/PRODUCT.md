@@ -26,8 +26,8 @@ Your day is a **timeline you play**. Plan it as blocks, live it as a run: finish
 
 ## MVP features (v0.1, local only)
 - [ ] One continuous timeline, zoom Sec → Year, live now-line that flows like a clock
-- [ ] Directions: vertical (down / up) and horizontal (right / left)
-- [ ] Layers as lanes: create, color, show / hide
+- [x] Directions: vertical (down / up) and horizontal (right / left)
+- [x] Layers as lanes: create, color, show / hide
 - [ ] Entries: task (time block), todo, note, reminder. Tap a time to add; edit, move, delete
 - [ ] Day / week / month / year progress bars; progress bar on the active task
 - [ ] Focus timer per task + notification when done; reminders as notifications

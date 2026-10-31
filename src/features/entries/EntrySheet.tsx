@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEFAULT_GRANULARITY, entryTiming, nudge, type EntryKind, type Granularity } from '@/core/entries/timing';
 import { APPROX_MS, MINUTE } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
-import { KIND_ICONS, layerIcon, usePalette, type IconName, type Palette } from '@/ui/theme';
+import { KIND_ICONS, usePalette, type IconName, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { deleteEntry, saveEntry, setDone, useEntry, useLayers, type Entry, type Layer } from './data';
@@ -164,7 +164,7 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
                 onPress={() => set({ layerId: l.id })}
                 style={[styles.layerChip, { backgroundColor: l.color.fill, borderColor: l.id === layer.id ? l.color.ink : l.color.fill, boxShadow: c.raisedSm }]}
               >
-                <Ionicons name={layerIcon(l.id)} size={14} color={l.color.ink} />
+                <Ionicons name={l.icon} size={14} color={l.color.ink} />
                 <Text style={[styles.chipText, { color: l.color.ink }]}>{l.name}</Text>
               </Pressable>
             ))}

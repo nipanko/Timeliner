@@ -4,14 +4,20 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–6. Branches not merged yet, stacked: `journey/goals` (slice 7) → `ui/pro-look` (v0.3 pro redesign + lime / fonts / tabs / Settings / game juice / endless week strip, checked out, last commit "Week strip: swipe through weeks without end"). 55 tests, typecheck and lint green.
-- **Resume with:** Nipanko reviews the new look, then says merge (both branches); next slice 8 = layer management (rename, recolor, add, icon column) + more settings (direction, week start, calm mode).
+- **Where the code is:** `main` has scaffold + slices 1–7 + the pro look (merged 1 Nov). Branch `layers/settings` (slice 8) not merged. 55 tests, typecheck and lint green.
+- **Resume with:** Nipanko tries slice 8 in Settings, then says merge. Then: motion polish / drag to reschedule (ask which).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01
+- Merged `journey/goals` + `ui/pro-look` into main (fast-forward). Branch `layers/settings` (slice 8): layer `icon` column (migration 0006, starter icons backfilled); Settings › Layers: rename, 6 colors (added teal, orange), 12 icons, show/hide, add. Settings › Timeline: direction, week start (Mon/Sun, drives the week strip and Week bar), calm mode (no confetti or haptics). Direction is now saved, so the timeline remembers it. Radios and switches now use `aria-checked`, so screen readers hear the selection on web.
+- Checked on the web build: added and renamed a layer (Gaming, teal, controller), it gets its own lane; Sunday week start; direction right; then restored Nipanko's defaults. The browser pane's storage was empty this morning (XP 0, starter layers), not caused by the app.
+- Gotchas: the browser pane sometimes doesn't repaint content that grows after load until the window is resized; `expo lint` can hold a stale cache (fix: `npx expo lint --no-cache` once).
+- Left out: deleting layers (hide does the job; delete needs a plan for their entries), reordering layers, week-start for the timeline's week ticks (still Monday).
+
 ### 2026-10-31 (8) — end of day
 - Day summary: slices 4–7 built (XP/levels/streaks, focus + notifications, end-of-day review, Journey goals + badges); 4–6 merged. Then the v0.3 "pro" look, the lime / fonts / Settings / game-juice pass and the endless week strip, all on `ui/pro-look`, waiting for the merge OK.
 - Learned (web + Expo Router):

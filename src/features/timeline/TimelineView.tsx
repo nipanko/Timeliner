@@ -24,7 +24,7 @@ import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
 import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
 import type { Entry, Layer } from '@/features/entries/data';
 import { useNow } from '@/hooks/useNow';
-import { KIND_ICONS, layerIcon, usePalette, type Palette } from '@/ui/theme';
+import { KIND_ICONS, usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 
@@ -298,14 +298,14 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
     >
       <View style={styles.row}>
         {/* Tasks wear their layer's icon; the other kinds say what they are. */}
-        <Ionicons name={entry.kind === 'task' ? layerIcon(layer.id) : KIND_ICONS[entry.kind]} size={12} color={ink} />
+        <Ionicons name={entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind]} size={12} color={ink} />
         <Text numberOfLines={1} style={[styles.itemTitle, { color: ink }, entry.done && styles.struck]}>
           {entry.title}
         </Text>
         {checkable && (
           <Pressable
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: entry.done }}
+            aria-checked={entry.done}
             accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
             hitSlop={11}
             onPress={() => onToggleDone(entry)}

@@ -86,12 +86,15 @@ export const LAYER_COLORS = {
   lilac: { fill: '#7C9CF5', ink: '#0B1633', strong: '#7C9CF5' },
   green: { fill: '#6CC070', ink: '#0D2610', strong: '#6CC070' },
   salmon: { fill: '#F28A8A', ink: '#3A0E0E', strong: '#F28A8A' },
+  teal: { fill: '#4FD1C5', ink: '#062723', strong: '#4FD1C5' },
+  orange: { fill: '#FF9F5A', ink: '#331500', strong: '#FF9F5A' },
 } satisfies Record<string, LayerColor>;
+
+export type LayerColorKey = keyof typeof LAYER_COLORS;
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-// shortcut: icons follow the starter layer ids; add an `icon` column when layers become editable (slice 8).
-const LAYER_ICONS: Record<string, IconName> = { work: 'briefcase', study: 'book', health: 'barbell', life: 'home' };
-export const layerIcon = (layerId: string): IconName => LAYER_ICONS[layerId] ?? 'ellipse';
+/** Icons people can pick for a layer in Settings. */
+export const LAYER_ICONS: IconName[] = ['briefcase', 'book', 'barbell', 'home', 'code-slash', 'game-controller', 'musical-notes', 'brush', 'heart', 'cash', 'people', 'airplane'];
 
 export const KIND_ICONS: Record<EntryKind, IconName> = { task: 'time', todo: 'checkbox', note: 'document-text', reminder: 'notifications' };

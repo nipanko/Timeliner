@@ -21,6 +21,8 @@ import { progressEvents, type ProgressSnapshot } from '@/core/game/events';
 import { LAYER_COLORS, usePalette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
+import { useSetting } from '@/features/settings/data';
+
 import { useProgress } from './useProgress';
 
 type Toast = { id: number; text: string; badge: boolean };
@@ -34,7 +36,9 @@ export function Celebrations() {
   const p = useProgress();
   const c = usePalette();
   const insets = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
+  // Calm mode (Settings) drops confetti and vibration, like reduce motion; XP and level news stay.
+  const calm = useSetting<string>('calm', 'off') === 'on';
+  const reduceMotion = useReducedMotion() || calm;
   const before = useRef<ProgressSnapshot | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [levelUp, setLevelUp] = useState<number | null>(null);
@@ -51,7 +55,7 @@ export function Celebrations() {
       for (const ev of events) {
         if (ev.type === 'level') {
           setLevelUp(ev.level);
-          haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
+          if (!calm) haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
           continue;
         }
         const id = nextId++;
@@ -59,10 +63,10 @@ export function Celebrations() {
         setToasts((t) => [...t, { id, text: ev.type === 'xp' ? `+${ev.amount} XP` : `Badge unlocked · ${name}`, badge: ev.type === 'badge' }]);
         setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ev.type === 'xp' ? 1600 : 2600);
         if (ev.type === 'xp') setBurst((b) => b + 1);
-        haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
+        if (!calm) haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
       }
     }, 120);
-  }, [p]);
+  }, [p, calm]);
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.passThrough]}>

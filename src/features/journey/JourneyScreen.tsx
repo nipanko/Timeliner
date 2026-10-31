@@ -130,7 +130,7 @@ function GoalCard({ goal, stops, color, c }: { goal: Entry; stops: Milestone[]; 
             <View key={m.id} style={styles.stopRow}>
               <Pressable
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: done }}
+                aria-checked={done}
                 accessibilityLabel={m.title}
                 onPress={() => setMilestoneReached(m, !done)}
                 style={styles.stopHit}

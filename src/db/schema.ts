@@ -9,6 +9,8 @@ export const layers = sqliteTable('layers', {
   name: text().notNull(),
   /** Key into LAYER_COLORS. */
   color: text().notNull(),
+  /** Ionicons name; null falls back to a dot. */
+  icon: text(),
   sort: integer().notNull(),
   visible: integer({ mode: 'boolean' }).notNull().default(true),
   createdAt: integer().notNull(),

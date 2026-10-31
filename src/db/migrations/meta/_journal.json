@@ -43,6 +43,13 @@
       "when": 1793383970453,
       "tag": "0005_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793425731478,
+      "tag": "0006_layer-icons",
+      "breakpoints": true
     }
   ]
 }
