@@ -1,10 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { mascotMood } from '@/core/game/mascot';
 import type { Direction } from '@/core/timeline/viewport';
+import { useLayers } from '@/features/entries/data';
 import { Tick } from '@/features/game/Tick';
 import { useProgress } from '@/features/game/useProgress';
 import { useNow } from '@/hooks/useNow';
@@ -30,6 +33,7 @@ export function SettingsScreen() {
   const direction = useSetting<Direction>('direction', 'down');
   const weekStart = useSetting<string>('weekStart', '1');
   const calm = useSetting<string>('calm', 'off');
+  const allLayers = useLayers();
   const earned = p.badges.filter((b) => b.earned).length;
 
   const choose = (t: ThemePreference) => {
@@ -104,27 +108,34 @@ export function SettingsScreen() {
       </Reveal>
 
       <Reveal index={2}>
-        <Text style={[styles.section, { color: c.muted }]}>LAYERS</Text>
-        <LayersSection />
-        <Text style={[styles.hint, { color: c.muted }]}>Tap a layer&apos;s badge for its color and icon.</Text>
+        <Text style={[styles.section, { color: c.muted }]}>CUSTOMIZE</Text>
+        <View style={styles.folds}>
+          <Fold c={c} icon="layers-outline" title="Layers" summary={`${allLayers.filter((l) => l.visible).length} of ${allLayers.length} shown`}>
+            <LayersSection />
+            <Text style={[styles.hint, { color: c.muted }]}>Tap a layer&apos;s badge for its color and icon.</Text>
+          </Fold>
+          <Fold
+            c={c}
+            icon="options-outline"
+            title="Timeline"
+            summary={`Runs ${direction} · week from ${weekStart === '0' ? 'Sun' : 'Mon'} · calm ${calm}`}
+          >
+            <View style={[styles.options, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
+              <Option c={c} label="Direction" value={direction} choices={DIRECTIONS} onPick={(v) => setSetting('direction', v)} />
+              <Option c={c} label="Week starts" value={weekStart} choices={WEEK_STARTS} onPick={(v) => setSetting('weekStart', v)} />
+              <Option c={c} label="Calm mode" value={calm} choices={CALM} onPick={(v) => setSetting('calm', v)} />
+            </View>
+            <Text style={[styles.hint, { color: c.muted }]}>Calm mode keeps XP and levels but drops confetti and vibration.</Text>
+          </Fold>
+        </View>
       </Reveal>
 
       <Reveal index={3}>
-        <Text style={[styles.section, { color: c.muted }]}>TIMELINE</Text>
-        <View style={[styles.options, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
-          <Option c={c} label="Direction" value={direction} choices={DIRECTIONS} onPick={(v) => setSetting('direction', v)} />
-          <Option c={c} label="Week starts" value={weekStart} choices={WEEK_STARTS} onPick={(v) => setSetting('weekStart', v)} />
-          <Option c={c} label="Calm mode" value={calm} choices={CALM} onPick={(v) => setSetting('calm', v)} />
-        </View>
-        <Text style={[styles.hint, { color: c.muted }]}>Calm mode keeps XP and levels but drops confetti and vibration.</Text>
-      </Reveal>
-
-      <Reveal index={4}>
         <Text style={[styles.section, { color: c.muted }]}>YOUR DATA</Text>
         <BackupSection />
       </Reveal>
 
-      <Reveal index={5}>
+      <Reveal index={4}>
         <Text style={[styles.section, { color: c.muted }]}>ABOUT</Text>
         <View style={[styles.about, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           <Ionicons name="lock-closed" size={16} color={c.muted} />
@@ -142,6 +153,36 @@ function Stat({ c, icon, value, label }: { c: Palette; icon: IconName; value: st
       <Ionicons name={icon} size={16} color={c.accentText} />
       <Text style={[styles.statValue, { color: c.ink }]}>{value}</Text>
       <Text style={[styles.statLabel, { color: c.muted }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** A settings row that folds open in place: icon, title, a one-line summary, and its controls. */
+function Fold({ c, icon, title, summary, children }: { c: Palette; icon: IconName; title: string; summary: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.fold}>
+      <Pressable
+        accessibilityRole="button"
+        aria-expanded={open}
+        accessibilityLabel={`${title}: ${summary}`}
+        onPress={() => setOpen(!open)}
+        style={({ pressed }) => [styles.foldRow, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+      >
+        <View style={[styles.foldIcon, { backgroundColor: c.chip }]}>
+          <Ionicons name={icon} size={18} color={c.accentText} />
+        </View>
+        <View style={styles.grow}>
+          <Text style={[styles.foldTitle, { color: c.ink }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.foldSummary, { color: c.muted }]}>{summary}</Text>
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={c.muted} />
+      </Pressable>
+      {open && (
+        <Animated.View entering={FadeIn.duration(180)} style={styles.foldBody}>
+          {children}
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -213,6 +254,13 @@ const styles = StyleSheet.create({
   hint: { fontSize: 12, fontFamily: F.text, marginTop: 8, marginLeft: 4 },
   about: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 14 },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
+  folds: { gap: 10 },
+  fold: { gap: 8 },
+  foldRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 12, minHeight: 64 },
+  foldIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  foldTitle: { fontSize: 15, fontFamily: F.semi },
+  foldSummary: { fontSize: 12.5, fontFamily: F.text },
+  foldBody: { gap: 2 },
   options: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
   option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, gap: 12 },
   optionLabel: { fontSize: 14, fontFamily: F.semi },

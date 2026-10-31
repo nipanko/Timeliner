@@ -219,6 +219,25 @@ export function TimelineScreen() {
             if (Platform.OS !== 'web' && calm !== 'on') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           }}
         />
+        {entries.length === 0 && (
+          // First run: a gentle nudge. box-none keeps the timeline under it scrollable.
+          <View pointerEvents="box-none" style={styles.hintWrap}>
+            <View style={[styles.hint, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+              <Text style={[styles.hintTitle, { color: c.ink }]}>Your day is a blank page</Text>
+              <Text style={[styles.hintBody, { color: c.muted }]}>Tap the timeline anywhere, or start here.</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => openAdd(Math.ceil(Date.now() / (15 * MINUTE)) * 15 * MINUTE, layers[0]?.id ?? '')}
+                style={({ pressed }) => [styles.hintButton, { boxShadow: c.glow }, pressed && styles.pressed]}
+              >
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.hintFill}>
+                  <Ionicons name="add" size={18} color={c.accentInk} />
+                  <Text style={[styles.hintButtonText, { color: c.accentInk }]}>Plan my first task</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </View>
 
       <ViewSheet open={viewOpen} layers={allLayers} direction={direction} onClose={() => setViewOpen(false)} />
@@ -269,5 +288,12 @@ const styles = StyleSheet.create({
   titleButton: { flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   chipText: { fontSize: 12, fontFamily: F.semi },
   trayWrap: { flex: 1, paddingHorizontal: 12 },
+  hintWrap: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center', paddingHorizontal: 24 },
+  hint: { width: 320, maxWidth: '100%', borderRadius: 22, padding: 16, gap: 6, alignItems: 'center' },
+  hintTitle: { fontSize: 17, fontFamily: F.display },
+  hintBody: { fontSize: 13.5, fontFamily: F.text, textAlign: 'center' },
+  hintButton: { alignSelf: 'stretch', height: 46, borderRadius: 15, overflow: 'hidden', marginTop: 6 },
+  hintFill: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
+  hintButtonText: { fontSize: 15, fontFamily: F.bold },
   pressed: { transform: [{ scale: 0.95 }], opacity: 0.85 },
 });

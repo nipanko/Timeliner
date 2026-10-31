@@ -6,7 +6,7 @@
 > - Gradient (`gradient` token) is for rewards and primary actions only: XP bars, the add button, "Close the day", "Done", earned badges, the best-moment card.
 > - Edges are inset 1 px shadows in the elevation tokens, so one `boxShadow` gives border + depth.
 > - Layer colors: Work `#F5C542`, Study `#7C9CF5`, Health `#6CC070`, Life `#F28A8A`, all with dark text.
-> - Type: **Space Grotesk** 600–700 for titles and numbers (level, timer, stats), **Inter** 500–700 for everything else, bundled with `expo-font` (OFL). Use `fontFamily` from `F` in `src/ui/type.ts`, never `fontWeight`. Tabular numbers; small caps-style labels with letter spacing.
+> - Type: **Lexend** 600–700 for titles and numbers (level, timer, stats; made for reading ease, very clear digits), **Inter** 500–700 for everything else, bundled with `expo-font` (OFL). Use `fontFamily` from `F` in `src/ui/type.ts`, never `fontWeight`. Tabular numbers; small caps-style labels with letter spacing.
 > - Icons: Ionicons (`@expo/vector-icons`), filled when active and outline when not. Task cards wear their layer's icon (Work briefcase, Study book, Health barbell, Life home); todo, note and reminder wear `KIND_ICONS`. No emoji in the UI.
 > - Appearance: System / Light / Dark in Settings (stored in the `settings` table). System follows the phone.
 > - Settings also holds Layers (rename, 6 colors, 12 icons, show/hide, add) and Timeline options: direction, week start (Mon/Sun), calm mode (no confetti or vibration; XP and level news stay).
