@@ -27,12 +27,14 @@ import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Vi
 import type { Entry, Layer } from '@/features/entries/data';
 import { useNow } from '@/hooks/useNow';
 import { useLoop } from '@/ui/motion';
+import { Tick } from '@/features/game/Tick';
 import { KIND_ICONS, usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 
 type PanGesture = ReturnType<typeof usePanGesture>;
 
+const NODE = 26; // branch node size
 const ANCHOR = 0.3; // where "now" sits along the axis, measured from the past end
 const BUFFER = 1; // screens laid out beyond each edge
 const FAR_PX = 20_000; // re-base positions before native (float32) transforms lose precision
@@ -76,7 +78,10 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
   const [box, setBox] = useState({ w: 0, h: 0 });
   const L = Math.max(1, (vertical ? box.h : box.w) - HDR);
   const C = Math.max(1, (vertical ? box.w : box.h) - GUT);
-  const laneW = C / Math.max(1, layers.length);
+  // The trunk (time itself) runs beside the time labels; each layer is a lane of branches after it.
+  const TRUNK = GUT + 14;
+  const LANES = GUT + 30;
+  const laneW = Math.max(1, C - (LANES - GUT)) / Math.max(1, layers.length);
   const laneIds = useMemo(() => layers.map((l) => l.id), [layers]);
 
   // React lays out a window around `center`; positions are measured from `origin`, so moving the
@@ -201,7 +206,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
 
   const tapEmpty = (x: number, y: number) => {
     const at = posToTime((vertical ? y : x) / L, { anchorTime: anchorTime.get(), anchorFrac: ANCHOR, span, direction });
-    const lane = layers[Math.min(layers.length - 1, Math.max(0, Math.floor(((vertical ? x : y) - GUT) / laneW)))];
+    const lane = layers[Math.min(layers.length - 1, Math.max(0, Math.floor(((vertical ? x : y) - LANES) / laneW)))];
     if (lane) onAdd(floorUnit(at, scale.snap.unit, scale.snap.step), lane.id);
   };
 
@@ -246,6 +251,12 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
 
   const minuteNow = useNow(60_000);
   const today = floorUnit(minuteNow, 'day');
+  // The next thing to do pulses (DESIGN.md: "next up"); only timed entries still ahead.
+  const nextId = useMemo(() => {
+    let best: Entry | undefined;
+    for (const e of entries) if (!e.done && e.kind !== 'note' && e.granularity === 'moment' && e.start >= minuteNow && (!best || e.start < best.start)) best = e;
+    return best?.id;
+  }, [entries, minuteNow]);
   const place = (at: number, len: number, cross: number, crossLen: number): ViewStyle =>
     vertical ? { top: at, height: len, left: cross, width: crossLen } : { left: at, width: len, top: cross, height: crossLen };
   const body: ViewStyle = vertical ? { top: HDR, left: 0, right: 0, bottom: 0 } : { left: HDR, top: 0, bottom: 0, right: 0 };
@@ -264,7 +275,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
               key={layer.id}
               style={[
                 styles.abs,
-                vertical ? { top: HDR, bottom: 0, left: GUT + i * laneW, width: laneW } : { left: HDR, right: 0, top: GUT + i * laneW, height: laneW },
+                vertical ? { top: HDR, bottom: 0, left: LANES + i * laneW, width: laneW } : { left: HDR, right: 0, top: LANES + i * laneW, height: laneW },
                 { backgroundColor: i % 2 ? c.laneAlt : 'transparent' },
               ]}
             />
@@ -281,7 +292,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
                   <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
                 ))}
                 {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} onToggleDone={onToggleDone} onMove={onMove} onLift={onLift} laneIds={laneIds} msPerPx={(sign * span) / L} snap={scale.snap} outerPan={pan} now={minuteNow} />
+                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={LANES + it.lane * laneW} laneW={laneW} trunk={TRUNK} isNext={it.id === nextId} onOpen={onOpen} onToggleDone={onToggleDone} onMove={onMove} onLift={onLift} laneIds={laneIds} msPerPx={(sign * span) / L} snap={scale.snap} outerPan={pan} now={minuteNow} />
                 ))}
                 {laid.majors.filter((m) => m.label).map((m) => (
                   <Text
@@ -296,8 +307,17 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
 
               <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, { backgroundColor: c.veil }, veilStyle]} />
 
+              {/* The trunk: dim ahead, lit behind you (the trail you have walked). */}
+              <View pointerEvents="none" style={[styles.abs, vertical ? { top: 0, bottom: 0, left: TRUNK - 1.5, width: 3 } : { left: 0, right: 0, top: TRUNK - 1.5, height: 3 }, { backgroundColor: c.lineStrong, borderRadius: 2 }]} />
+              <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, veilStyle]}>
+                <View style={[styles.abs, vertical ? { top: 0, bottom: 0, left: TRUNK - 2, width: 4 } : { left: 0, right: 0, top: TRUNK - 2, height: 4 }, { backgroundColor: c.accentText, boxShadow: c.glow, borderRadius: 2 }]} />
+              </Animated.View>
+
               <Animated.View pointerEvents="none" style={[styles.abs, zeroAlong, styles.visible, nowStyle]}>
-                <View style={[styles.abs, vertical ? { top: -1.5, height: 3, left: GUT - 4, right: 0 } : { left: -1.5, width: 3, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accentText, boxShadow: c.glow }]} />
+                <View style={[styles.abs, vertical ? { top: -1, height: 2, left: GUT - 4, right: 0 } : { left: -1, width: 2, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accentText, opacity: 0.55 }]} />
+                <View style={[styles.abs, vertical ? { top: -17, left: TRUNK - 16 } : { left: -16, top: TRUNK - 17 }]}>
+                  <Tick size={32} mood="happy" />
+                </View>
                 <Animated.View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accentText, boxShadow: c.glow }, pulseStyle]}>
                   <ClockText color={c.ground} />
                 </Animated.View>
@@ -311,7 +331,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
             return (
               <View
                 key={layer.id}
-                style={[styles.abs, styles.laneHead, place(5, HDR - 10, GUT + i * laneW + 3, laneW - 6), { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
+                style={[styles.abs, styles.laneHead, place(5, HDR - 10, LANES + i * laneW + 3, laneW - 6), { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
               >
                 <View style={[styles.laneDot, { backgroundColor: layer.color.fill, boxShadow: `0 0 8px ${layer.color.fill}` }]} />
                 <View style={styles.laneText}>
@@ -358,10 +378,13 @@ type ItemProps = {
   snap: Interval;
   /** The timeline's own pan: it waits while a card decides whether it is being moved. */
   outerPan: PanGesture;
+  /** Cross-axis position of the trunk, where the branch starts. */
+  trunk: number;
+  isNext: boolean;
   now: number;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, onMove, onLift, laneIds, msPerPx, snap, outerPan, now }: ItemProps) {
+function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, onMove, onLift, laneIds, msPerPx, snap, outerPan, trunk, isNext, now }: ItemProps) {
   const { entry, shape } = it;
   // Completing a card pops it (1 → 1.08 → 0.97 → 1); an active task's ring breathes (DESIGN.md §2).
   const pop = useSharedValue(1);
@@ -422,72 +445,109 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
     ],
   }));
   const breathStyle = useAnimatedStyle(() => ({ opacity: 0.2 + 0.6 * breath.get() }));
+  const nextPulse = useLoop(1600, isNext);
+  const nextStyle = useAnimatedStyle(() => ({ opacity: 0.55 * (1 - nextPulse.get()), transform: [{ scale: 1 + 0.5 * nextPulse.get() }] }));
+  const branchStyle = useAnimatedStyle(() => ({ opacity: lifted.get() ? 0 : 1 }));
   const sub = laneW / it.columns;
   const start = laneStart + it.column * sub;
   if (shape === 'band') {
-    return <View style={[styles.abs, styles.noTouch, place(it.at, it.len, laneStart + 1, 4), { backgroundColor: layer.color.strong, opacity: 0.45, borderRadius: 2 }]} />;
+    // Month / year goals: a long bar in their lane and a flag where they begin on the trunk.
+    return (
+      <>
+        <View style={[styles.abs, styles.noTouch, place(it.at, it.len, laneStart + 1, 4), { backgroundColor: layer.color.strong, opacity: 0.45, borderRadius: 2 }]} />
+        <View style={[styles.abs, styles.noTouch, place(it.at - 8, 16, trunk - 8, 16), styles.center]}>
+          <Ionicons name="flag" size={13} color={layer.color.fill} />
+        </View>
+      </>
+    );
   }
-  const flatPill = !vertical && shape === 'pill';
-  const frame = place(it.at, it.len, flatPill ? start + (sub - 30) / 2 : start + 4, flatPill ? 30 : sub - 8);
   // A missed task stays as a neutral gap, never a red failure (RESEARCH.md #10).
   const skipped = entry.kind === 'task' && !entry.done && entry.end !== null && entry.end <= now;
-  const look = skipped
-    ? { backgroundColor: 'transparent', borderWidth: 2, borderStyle: 'dashed' as const, borderColor: c.lineStrong }
-    : { backgroundColor: layer.color.fill, opacity: entry.done ? 0.55 : 1 };
-  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : skipped ? ', missed' : ''}`;
+  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : skipped ? ', missed' : isNext ? ', next up' : ''}`;
+  const tone = skipped ? c.lineStrong : layer.color.fill;
 
-  if (shape === 'compact' || shape === 'dot') {
-    return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => onOpen(entry.id)} style={[styles.abs, frame, look, { borderRadius: 4 }]} />;
+  if (shape === 'dot') {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={() => onOpen(entry.id)}
+        style={[styles.abs, place(it.at, Math.max(it.len, 8), start + 4, 8), { backgroundColor: tone, opacity: entry.done ? 0.5 : 1, borderRadius: 4 }]}
+      />
+    );
   }
-  const showTime = shape === 'card' && entry.granularity === 'moment' && it.len > (vertical ? 48 : 110);
-  const checkable = entry.kind !== 'note' && !flatPill && sub - 8 >= 96;
-  const ink = skipped ? c.muted : layer.color.ink;
+
+  // A branch: connector from the trunk, a node you tap to complete, the title beside it,
+  // and a thin bar along the time axis for how long it lasts.
+  const frame = place(it.at, Math.max(it.len, NODE), start + 2, sub - 4);
+  const checkable = entry.kind !== 'note';
+  const icon = entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind];
+  const subtitle = entry.done ? 'Done' : skipped ? 'Missed, no penalty' : isNext ? 'Next up' : entry.end !== null && entry.granularity === 'moment' ? `${timeFmt.format(entry.start)}–${timeFmt.format(entry.end)}` : timeFmt.format(entry.start);
   return (
-    <GestureDetector gesture={move}>
-      <View style={[styles.abs, frame]}>
-        <Animated.View style={[styles.abs, styles.fill, popStyle]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={label}
-            accessibilityHint={entry.granularity === 'moment' ? 'Long-press and drag to move it' : undefined}
-            onPress={() => !dragged.get() && onOpen(entry.id)}
-            style={({ pressed }) => [styles.abs, styles.fill, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }, pressed && styles.pressed]}
-          >
-            <View style={styles.row}>
-              {/* Tasks wear their layer's icon; the other kinds say what they are. */}
-              <Ionicons name={entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind]} size={12} color={ink} />
-              <Text numberOfLines={1} style={[styles.itemTitle, { color: ink }, entry.done && styles.struck]}>
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.abs,
+          vertical ? { top: it.at + NODE / 2 - 1, height: 2, left: trunk, width: start + 2 + NODE / 2 - trunk } : { left: it.at + NODE / 2 - 1, width: 2, top: trunk, height: start + 2 + NODE / 2 - trunk },
+          { backgroundColor: tone, opacity: skipped ? 1 : 0.7 },
+          branchStyle,
+        ]}
+      />
+      <GestureDetector gesture={move}>
+        <View style={[styles.abs, frame]}>
+          <Animated.View style={[styles.abs, styles.fill, popStyle]}>
+            {it.len > NODE && (
+              <View
+                pointerEvents="none"
+                style={[styles.abs, vertical ? { top: NODE / 2, bottom: 0, left: NODE / 2 - 2, width: 4 } : { left: NODE / 2, right: 0, top: NODE / 2 - 2, height: 4 }, { backgroundColor: tone, opacity: 0.3, borderRadius: 2 }]}
+              />
+            )}
+            {isNext && <Animated.View pointerEvents="none" style={[styles.abs, styles.node, { borderColor: layer.color.fill, borderWidth: 2 }, nextStyle]} />}
+            {active && <Animated.View pointerEvents="none" style={[styles.abs, styles.node, styles.breath, { borderColor: layer.color.fill }, breathStyle]} />}
+            <Pressable
+              accessibilityRole={checkable ? 'checkbox' : 'button'}
+              aria-checked={checkable ? entry.done : undefined}
+              accessibilityLabel={checkable ? `Mark ${entry.title} ${entry.done ? 'not done' : 'done'}` : label}
+              hitSlop={8}
+              onPress={() => !dragged.get() && (checkable ? onToggleDone(entry) : onOpen(entry.id))}
+              style={({ pressed }) => [
+                styles.abs,
+                styles.node,
+                entry.done
+                  ? { backgroundColor: layer.color.fill, boxShadow: `0 0 10px ${layer.color.fill}` }
+                  : skipped
+                    ? { backgroundColor: c.tray, borderWidth: 2, borderStyle: 'dashed', borderColor: c.lineStrong }
+                    : { backgroundColor: c.panel, borderWidth: 2.5, borderColor: layer.color.fill },
+                pressed && styles.pressed,
+              ]}
+            >
+              {entry.done ? (
+                <Animated.View entering={ZoomIn.springify()}>
+                  <Ionicons name="checkmark" size={15} color={layer.color.ink} />
+                </Animated.View>
+              ) : (
+                <Ionicons name={icon} size={12} color={skipped ? c.muted : layer.color.fill} />
+              )}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              accessibilityHint={entry.granularity === 'moment' ? 'Long-press and drag to move it' : undefined}
+              onPress={() => !dragged.get() && onOpen(entry.id)}
+              style={({ pressed }) => [styles.abs, vertical ? { top: 0, left: NODE + 6, right: 0 } : { left: NODE + 6, top: 0, width: 150 }, styles.labelBox, pressed && styles.pressed]}
+            >
+              <Text numberOfLines={1} style={[styles.itemTitle, { color: skipped ? c.muted : c.ink }, entry.done && styles.doneTitle]}>
                 {entry.title}
               </Text>
-              {checkable && (
-                <Pressable
-                  accessibilityRole="checkbox"
-                  aria-checked={entry.done}
-                  accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
-                  hitSlop={11}
-                  onPress={() => onToggleDone(entry)}
-                  style={({ pressed }) => [styles.check, { borderColor: skipped ? c.lineStrong : layer.color.ink, backgroundColor: entry.done ? layer.color.ink : 'transparent' }, pressed && styles.pressed]}
-                >
-                  {entry.done && (
-                    <Animated.View entering={ZoomIn.springify()}>
-                      <Ionicons name="checkmark" size={13} color={layer.color.fill} />
-                    </Animated.View>
-                  )}
-                </Pressable>
-              )}
-            </View>
-            {showTime && entry.end !== null && (
-              <Text numberOfLines={1} style={[styles.itemTime, { color: layer.color.ink }]}>
-                {timeFmt.format(entry.start)}–{timeFmt.format(entry.end)}
+              <Text numberOfLines={1} style={[styles.itemTime, { color: entry.done ? layer.color.fill : isNext ? c.accentText : c.muted }]}>
+                {subtitle}
               </Text>
-            )}
-          </Pressable>
-          {active && (
-            <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, styles.breath, shape === 'card' ? styles.card : styles.pillItem, { borderColor: layer.color.ink }, breathStyle]} />
-          )}
-        </Animated.View>
-      </View>
-    </GestureDetector>
+            </Pressable>
+          </Animated.View>
+        </View>
+      </GestureDetector>
+    </>
   );
 }
 
@@ -513,15 +573,14 @@ const styles = StyleSheet.create({
   laneText: { flex: 1 },
   laneName: { fontSize: 12, fontFamily: F.bold },
   laneSub: { fontSize: 10.5, fontFamily: F.semi },
-  card: { borderRadius: 14, paddingHorizontal: 9, paddingVertical: 6, gap: 2 },
-  pillItem: { borderRadius: 999, paddingHorizontal: 10, justifyContent: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  node: { top: 0, left: 0, width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center' },
+  labelBox: { minHeight: NODE, justifyContent: 'center' },
   itemTitle: { flex: 1, fontSize: 12.5, fontFamily: F.semi, letterSpacing: -0.1 },
-  check: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   pressed: { transform: [{ scale: 0.97 }] },
   breath: { borderWidth: 2 },
   itemTime: { fontSize: 10.5, fontFamily: F.semi, opacity: 0.8, fontVariant: ['tabular-nums'] },
-  struck: { textDecorationLine: 'line-through' },
+  doneTitle: { opacity: 0.75 },
   nowButton: { position: 'absolute', right: 10, bottom: 10, height: 44, paddingHorizontal: 16, borderRadius: 999, justifyContent: 'center' },
   nowButtonText: { fontSize: 13, fontFamily: F.bold },
   zoomChip: { position: 'absolute', alignSelf: 'center', top: '42%', paddingHorizontal: 18, height: 44, borderRadius: 999, justifyContent: 'center' },

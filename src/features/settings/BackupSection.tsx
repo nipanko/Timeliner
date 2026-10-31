@@ -77,7 +77,9 @@ export function BackupSection() {
     try {
       await saveBackup(await exportAll()); // a safety copy of what is about to be replaced
       await replaceAll(pending.backup.data);
-      setNote({ ok: true, text: 'Restored. A copy of your previous data was downloaded first, just in case.' });
+      setNote({ ok: true, text: 'Restored. A copy of your previous data was downloaded first, just in case. Reloading…' });
+      // Every screen re-reads the new data from scratch (live queries alone left some numbers stale).
+      setTimeout(() => location.reload(), 1500);
     } catch {
       setNote({ ok: false, text: 'Restore failed. Nothing was changed.' });
     }

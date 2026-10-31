@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -39,6 +39,7 @@ export function TimelineScreen() {
   const [scaleId, setScaleId] = useState<ScaleId>('hour');
   const direction = useSetting<Direction>('direction', 'down');
   const calm = useSetting<string>('calm', 'off');
+  const narrow = useWindowDimensions().width < 520; // phones: short month so the title, buttons and level chip fit
   const inboxCount = useInbox().length;
   const ws: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
   const [weekShift, setWeekShift] = useState(0);
@@ -111,21 +112,21 @@ export function TimelineScreen() {
 
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text numberOfLines={1} style={[styles.month, { color: c.ink }]} accessibilityRole="header">
-            {new Date(shown).toLocaleDateString(undefined, { month: 'long' })} <Text style={{ color: c.accentText }}>{new Date(shown).getFullYear()}</Text>
+          <Text numberOfLines={1} style={[styles.month, narrow && styles.monthNarrow, { color: c.ink }]} accessibilityRole="header">
+            {new Date(shown).toLocaleDateString(undefined, { month: narrow ? 'short' : 'long' })} <Text style={{ color: c.accentText }}>{new Date(shown).getFullYear()}</Text>
           </Text>
           <View style={styles.jumpButtons}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Pick a date" onPress={() => openJump('date')} style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Pick a date" onPress={() => openJump('date')} style={({ pressed }) => [styles.jumpButton, narrow && styles.jumpButtonNarrow, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
               <Ionicons name="calendar-outline" size={17} color={c.ink} />
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Pick a time" onPress={() => openJump('time')} style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Pick a time" onPress={() => openJump('time')} style={({ pressed }) => [styles.jumpButton, narrow && styles.jumpButtonNarrow, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
               <Ionicons name="time-outline" size={17} color={c.ink} />
             </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Inbox, ${inboxCount} parked`}
               onPress={() => router.push('/inbox')}
-              style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.jumpButton, narrow && styles.jumpButtonNarrow, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}
             >
               <Ionicons name="file-tray-outline" size={17} color={c.ink} />
               {inboxCount > 0 && (
@@ -154,13 +155,14 @@ export function TimelineScreen() {
             accessibilityLabel={`Level ${lv.level}, ${lv.into} of ${lv.need} XP, ${run.days}-day streak, ${run.freezes} freezes. Open your journey`}
             style={[styles.hud, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
           >
-            <Tick size={34} mood={mascotMood({ hour: new Date(now).getHours(), doneToday })} celebrate={progress.ready ? progress.xp : undefined} />
+            {/* On phones Tick lives on the timeline's trunk; the chip needs the room. */}
+            {!narrow && <Tick size={34} mood={mascotMood({ hour: new Date(now).getHours(), doneToday })} celebrate={progress.ready ? progress.xp : undefined} />}
             <Text style={[styles.lv, { color: c.accentText }]}>LV {lv.level}</Text>
-            <View style={styles.xpCol}>
+            <View style={[styles.xpCol, narrow && styles.xpColNarrow]}>
               <View style={[styles.xpTrack, { backgroundColor: c.chip }]}>
                 <ProgressFill value={lv.into / lv.need} colors={c.gradient} />
               </View>
-              <Text style={[styles.micro, { color: c.muted }]}>{lv.into}/{lv.need} XP</Text>
+              <Text numberOfLines={1} style={[styles.micro, { color: c.muted }]}>{lv.into}/{lv.need}{narrow ? '' : ' XP'}</Text>
             </View>
             <View style={styles.streakRow}>
               <Flame lit={run.days > 0} muted={c.muted} />
@@ -287,14 +289,17 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, gap: 10 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   month: { flexShrink: 1, fontSize: 26, fontFamily: F.display, letterSpacing: -0.6 },
+  monthNarrow: { fontSize: 20, letterSpacing: -0.4 },
   jumpButtons: { flexDirection: 'row', gap: 6 },
   badge: { position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 10.5, fontFamily: F.bold },
   jumpButton: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  jumpButtonNarrow: { width: 32, height: 32, borderRadius: 11 },
   todayPill: { height: 30, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center' },
   todayText: { fontSize: 12.5, fontFamily: F.bold },
   hud: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 12, borderRadius: 14 },
   lv: { fontSize: 14, fontFamily: F.display, letterSpacing: 0.5 },
+  xpColNarrow: { width: 46 },
   xpCol: { width: 62, gap: 3 },
   xpTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },

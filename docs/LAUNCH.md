@@ -37,7 +37,7 @@ Steps (Nipanko does the account parts; I prepare the rest):
 What web users get at this stage: the full app, private to their browser.
 - Clearing site data deletes it. **Settings › Your data** (built 1 Nov) exports a backup file and restores one: the file is fully validated, and the current data is downloaded first. That's the bridge until accounts exist.
 - The page asks the browser for persistent storage (granted to installed or frequently used sites), so it isn't evicted when space runs low.
-- **Known risk:** the browser database (expo-sqlite's OPFS access-handle pool) can only be open in one tab at a time, and on 31 Oct/1 Nov the test browser's data was found reset twice, cause unknown (likely the test browser clearing storage). Watch for this in real browsers; cloud sync (§4) is the real fix.
+- **Resolved:** the test browser's data was found reset twice on 31 Oct / 1 Nov. Cause found on 1 Nov: the Claude browser pane wipes all its storage (database and localStorage) when it is closed and reopened. Not an app bug. Real-world note: expo-sqlite's browser storage can be open in one tab at a time (the app retries once, then explains).
 
 ## 2. Phones: App Store and Google Play (Phase 2a)
 
