@@ -1,11 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { focusedMs } from '@/core/game/focus';
 import { setDone, useEntry, useLayers } from '@/features/entries/data';
+import { addToInbox } from '@/features/inbox/data';
 import { useNow } from '@/hooks/useNow';
 import { cancelFocusEnd, scheduleFocusEnd } from '@/lib/notifications';
 import { ProgressFill } from '@/ui/motion';
@@ -82,6 +84,8 @@ export function FocusScreen({ id }: { id: string }) {
         </View>
       </View>
 
+      <ParkThought />
+
       <View style={styles.buttons}>
         <Pressable
           accessibilityRole="button"
@@ -98,6 +102,49 @@ export function FocusScreen({ id }: { id: string }) {
           </LinearGradient>
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+/** Park a stray thought without leaving focus (RESEARCH.md #6): it waits in the Inbox. */
+function ParkThought() {
+  const c = usePalette();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [parked, setParked] = useState(false);
+  const park = async () => {
+    if (!text.trim()) return;
+    await addToInbox(text);
+    setText('');
+    setOpen(false);
+    setParked(true);
+    setTimeout(() => setParked(false), 1800);
+  };
+
+  if (!open) {
+    return (
+      <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={({ pressed }) => [styles.park, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
+        <Ionicons name={parked ? 'checkmark-circle' : 'file-tray-outline'} size={17} color={parked ? c.accentText : c.muted} />
+        <Text style={[styles.parkText, { color: parked ? c.accentText : c.muted }]}>{parked ? 'Parked in your Inbox' : 'Park a thought'}</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <View style={[styles.parkRow, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        onSubmitEditing={park}
+        autoFocus
+        maxLength={200}
+        placeholder="Write it down, then back to focus"
+        placeholderTextColor={c.muted}
+        accessibilityLabel="Thought to park"
+        style={[styles.parkInput, { color: c.ink }]}
+      />
+      <Pressable accessibilityRole="button" accessibilityLabel="Park it" onPress={park} style={({ pressed }) => [styles.parkSave, { backgroundColor: c.accent }, pressed && styles.pressed]}>
+        <Ionicons name="arrow-up" size={18} color={c.accentInk} />
+      </Pressable>
     </View>
   );
 }
@@ -119,4 +166,9 @@ const styles = StyleSheet.create({
   primaryFill: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontSize: 15, fontFamily: F.bold },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
+  park: { alignSelf: 'center', height: 44, paddingHorizontal: 16, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
+  parkText: { fontSize: 13.5, fontFamily: F.semi },
+  parkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 18, padding: 6, paddingLeft: 14, marginBottom: 14 },
+  parkInput: { flex: 1, height: 44, fontSize: 15, fontFamily: F.semi },
+  parkSave: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 });

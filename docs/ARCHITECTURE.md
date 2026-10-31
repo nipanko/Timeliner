@@ -84,6 +84,7 @@ All times are **epoch milliseconds (UTC) as integers**. Entries that mean "a who
 | `xp_events` | `id`, `entryId?`, `reason` (`complete` \| `plan_ahead` \| `calibration` \| `break` \| `review`), `amount`, `at` | **Not built yet.** Added when rewards come from things that aren't entries (focus sessions, breaks, reviews, league). Until then XP is derived (§5). |
 | `day_logs` | `day` (local `YYYY-MM-DD`), `reviewedAt?`, `freezeUsed` | Streak and review bookkeeping. |
 | `badges_unlocked` | `badgeId`, `unlockedAt`, `seenAt?` | **Not built yet.** Badges are derived from entries (`core/game/badges.ts`). Celebrations diff progress in memory (§11), so an unlock plays when it happens while the app is open. Add this table when unlocks earned while the app was closed (or on another device) must play too. |
+| `inbox` | `id`, `title`, `createdAt` | Quick captures without a time (migration 0007). Planning one creates an entry and deletes the row, so entries always keep a start time. |
 | `settings` | `key`, `value` | App preferences as text: `theme` (`system` \| `light` \| `dark`), `direction` (`down` \| `up` \| `right` \| `left`), `weekStart` (`1` Monday \| `0` Sunday), `calm` (`on` \| `off`). |
 
 A **goal** is a long task (`granularity` month or year). Its **milestones** live in their own `milestones` table (`id`, `goalId`, `title`, `sort`, `doneAt?`, `createdAt`), since they are not on the timeline; on the Journey screen the goal is a branch and the milestones are its stops. Each reached milestone earns 50 XP.

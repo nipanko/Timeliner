@@ -54,6 +54,7 @@ function AppStack() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="entry/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="focus/[id]" />
+        <Stack.Screen name="inbox" options={{ presentation: 'modal' }} />
       </Stack>
       <Celebrations />
     </GestureHandlerRootView>

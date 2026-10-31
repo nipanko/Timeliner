@@ -50,6 +50,13 @@
       "when": 1793425731478,
       "tag": "0006_layer-icons",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793429940847,
+      "tag": "0007_inbox",
+      "breakpoints": true
     }
   ]
 }

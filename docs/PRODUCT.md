@@ -44,7 +44,7 @@ Your day is a **timeline you play**. Plan it as blocks, live it as a run: finish
 - **League (Phase 2, needs accounts):** weekly leagues of similar players, friends + cheers, co-op party quests. Rules in RESEARCH.md #16, #22.
 - Calendar import, home-screen widgets
 - Round "clock" view of the timeline, recurring entries, subtasks, search, priorities/tags
-- Inbox lane for quick capture ("park a thought" in focus mode)
+- [x] Inbox for quick capture ("park a thought" in focus mode) — built 1 Nov as a list behind an icon, not a lane
 
 ## What makes it different
 - [ ] _Draft from 30 Oct chat, confirm or rewrite:_ Planners like Structured show one day; habit RPGs like Habitica are lists that punish misses. TIMELINER is **one live timeline from seconds to years**, in parallel layers and any direction, with a **forgiving** game layer built on productivity research.

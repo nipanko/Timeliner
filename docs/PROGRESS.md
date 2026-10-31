@@ -5,13 +5,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule and pinch zoom (all merged 1 Nov). 55 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries the calendar / clock on `timeline/jump`, then says merge. Then Inbox slice, then mascot slice (both asked for 1 Nov).
+- **Resume with:** Nipanko tries the Inbox on branch `inbox`, then says merge. Then the mascot slice (asked for 1 Nov).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (6)
+- Jump merged. Branch `inbox`: `inbox` table (migration 0007) + `features/inbox` (data, InboxScreen at `/inbox` as a modal). Header icon with a count badge beside calendar / clock. Plan → add sheet prefilled (`title`, `inbox` route params) → saving removes the item. Focus: "Park a thought" inline field with a "Parked in your Inbox" confirmation.
+- Checked on the web build: captured items with Enter, planned "Idea: radial clock view" → task at 12:45–1:10 PM and the badge went 3 → 2; parked "Buy milk" from Focus. Not run on a phone.
+- Gotcha: with tabs kept alive (React Activity), a hidden copy of the header can sit in the DOM with old values; read the visible one.
+- Left out: web capture bar, natural-language times ("tomorrow 9am"), dragging an inbox item onto the timeline.
+
 ### 2026-11-01 (5)
 - Pinch zoom merged. Nipanko asked for: mascot + Inbox, a calendar in the corner to jump to a date, and a small clock icon with an iPhone-alarm-style scrolling time picker with sound. Plan: three slices (jump → Inbox → mascot).
 - Branch `timeline/jump`: calendar and clock buttons beside the month title. `JumpSheet`: month calendar (`core/time/periods.ts` `monthGrid`, tested incl. DST) and time wheels (`src/ui/Wheel.tsx`: Reanimated + pan, rubber band, spring settle, 3D tilt, mouse wheel on web, adjustable for screen readers). Tick: `src/lib/tick.ts` (expo-audio, new dependency, plays our own generated `assets/sounds/tick.wav`, mixes with music, respects the silent switch, + selection haptic) and `tick.web.ts` (Web Audio click, no file). Jumping also moves the week strip. 62 tests.

@@ -7,12 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEFAULT_GRANULARITY, entryTiming, nudge, type EntryKind, type Granularity } from '@/core/entries/timing';
 import { APPROX_MS, MINUTE } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
+import { removeFromInbox } from '@/features/inbox/data';
 import { KIND_ICONS, usePalette, type IconName, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { deleteEntry, saveEntry, setDone, useEntry, useLayers, type Entry, type Layer } from './data';
 
-type Props = { id: string | null; at: number; layerId?: string; scaleId: ScaleId };
+/** `fromInbox`: the inbox item being planned; it is removed once the entry is saved. */
+type Props = { id: string | null; at: number; layerId?: string; scaleId: ScaleId; title?: string; fromInbox?: string };
 type Form = { kind: EntryKind; title: string; granularity: Granularity; at: number; lengthMin: number; layerId: string };
 
 const KINDS: [EntryKind, string][] = [['task', 'Task'], ['todo', 'Todo'], ['note', 'Note'], ['reminder', 'Reminder']];
@@ -20,13 +22,13 @@ const GRANULARITIES: [Granularity, string][] = [['moment', 'Time'], ['day', 'Day
 const LENGTHS = [5, 15, 25, 45, 60, 90];
 const VERB: Record<EntryKind, string> = { task: 'I will', todo: 'I will', note: 'I note:', reminder: 'remind me to' };
 
-export function EntrySheet({ id, at, layerId, scaleId }: Props) {
+export function EntrySheet({ id, at, layerId, scaleId, title, fromInbox }: Props) {
   const c = usePalette();
   const existing = useEntry(id);
   const layers = useLayers();
   if (!layers.length || (id && !existing)) return <View style={[styles.screen, { backgroundColor: c.panel }]} />;
-  const initial = existing ? fromEntry(existing) : newForm(at, layerId, scaleId, layers);
-  return <EntryForm key={existing?.id ?? 'new'} id={id} done={existing?.done ?? false} initial={initial} layers={layers} />;
+  const initial = existing ? fromEntry(existing) : { ...newForm(at, layerId, scaleId, layers), title: title ?? '' };
+  return <EntryForm key={existing?.id ?? 'new'} id={id} done={existing?.done ?? false} initial={initial} layers={layers} fromInbox={fromInbox} />;
 }
 
 function newForm(at: number, layerId: string | undefined, scaleId: ScaleId, layers: Layer[]): Form {
@@ -55,7 +57,7 @@ function close() {
   else router.replace('/');
 }
 
-function EntryForm({ id, done, initial, layers }: { id: string | null; done: boolean; initial: Form; layers: Layer[] }) {
+function EntryForm({ id, done, initial, layers, fromInbox }: { id: string | null; done: boolean; initial: Form; layers: Layer[]; fromInbox?: string }) {
   const c = usePalette();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState(initial);
@@ -73,6 +75,7 @@ function EntryForm({ id, done, initial, layers }: { id: string | null; done: boo
   const save = async () => {
     if (!title) return;
     await saveEntry(id, { layerId: layer.id, kind: form.kind, title, start, end, granularity });
+    if (fromInbox) await removeFromInbox(fromInbox);
     close();
   };
   const toggleDone = async () => {

@@ -69,3 +69,10 @@ export const settings = sqliteTable('settings', {
   key: text().primaryKey(),
   value: text().notNull(),
 });
+
+/** Quick captures without a time (RESEARCH.md #6). Planning one turns it into an entry and removes it here. */
+export const inbox = sqliteTable('inbox', {
+  id: text().primaryKey(),
+  title: text().notNull(),
+  createdAt: integer().notNull(),
+});

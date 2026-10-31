@@ -13,6 +13,7 @@ import { getScale, SCALES, zoomAfterPinch, type ScaleId } from '@/core/timeline/
 import type { Direction } from '@/core/timeline/viewport';
 import { saveEntry, setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useProgress } from '@/features/game/useProgress';
+import { useInbox } from '@/features/inbox/data';
 import { setSetting, useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { syncEntryNotifications } from '@/lib/notifications';
@@ -36,6 +37,7 @@ export function TimelineScreen() {
   const [scaleId, setScaleId] = useState<ScaleId>('hour');
   const direction = useSetting<Direction>('direction', 'down');
   const calm = useSetting<string>('calm', 'off');
+  const inboxCount = useInbox().length;
   const ws: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
   const [weekShift, setWeekShift] = useState(0);
   const allLayers = useLayers();
@@ -115,6 +117,19 @@ export function TimelineScreen() {
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Pick a time" onPress={() => openJump('time')} style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
               <Ionicons name="time-outline" size={17} color={c.ink} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Inbox, ${inboxCount} parked`}
+              onPress={() => router.push('/inbox')}
+              style={({ pressed }) => [styles.jumpButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+            >
+              <Ionicons name="file-tray-outline" size={17} color={c.ink} />
+              {inboxCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: c.accent, boxShadow: c.glow }]}>
+                  <Text style={[styles.badgeText, { color: c.accentInk }]}>{inboxCount > 9 ? '9+' : inboxCount}</Text>
+                </View>
+              )}
             </Pressable>
           </View>
           {weekShift !== 0 && (
@@ -269,6 +284,8 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   month: { flexShrink: 1, fontSize: 26, fontFamily: F.display, letterSpacing: -0.6 },
   jumpButtons: { flexDirection: 'row', gap: 6 },
+  badge: { position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { fontSize: 10.5, fontFamily: F.bold },
   jumpButton: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   todayPill: { height: 30, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center' },
   todayText: { fontSize: 12.5, fontFamily: F.bold },
