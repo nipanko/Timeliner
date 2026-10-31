@@ -5,13 +5,18 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8 + the pro look (all merged 1 Nov). 55 tests, typecheck and lint green.
-- **Resume with:** Nipanko reviews `motion/polish` (best on a phone or with animations on), then says merge. Next: drag a card to reschedule.
+- **Resume with:** motion polish merged. Nipanko tries drag-to-reschedule on `timeline/drag` (long-press a card ~⅓ s, then drag), then says merge.
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (3)
+- Motion polish merged. Branch `timeline/drag`: `core/entries/timing.ts` `reschedule()` (shift, snap the start to the nearest zoom slot, keep the length; 3 tests incl. DST). Cards get a long-press (350 ms) pan that `block`s the timeline's own pan; moving earlier than the hold fails it so the timeline scrolls. The card lifts (scale 1.05), follows the finger along the axis, snaps on release; a tap after a drag doesn't open it; medium haptic on lift (not on web or in calm mode). 58 tests.
+- Checked on the web build with mouse drags: a held drag moved "Motion test" from 11:45 to 9:45 (2 h, snapped); a faster drag scrolled the timeline instead; a tap still opens the card.
+- Learned: the drop must use the release event's translation, not the last update (a fast drag may send none). Cross-lane moves (change layer by dragging sideways) left out.
+
 ### 2026-11-01 (2)
 - Slice 8 merged. Branch `motion/polish`: `src/ui/motion.tsx` (`useLoop` for ambient loops that stop with reduce motion; `ProgressFill`, a gradient bar that eases via scaleX with a small overshoot). Clock pill pulse, streak flame flicker, breathing ring on the task happening now, pop when a card is completed; header / Settings / Focus bars now animate.
 - Checked on the web build: added and completed a "Motion test" task, XP 15/100 and the bar at exactly 15 %, no console errors. The loops themselves can't be seen in the browser pane (it asks for reduced motion); not run on a phone.

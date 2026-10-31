@@ -1,8 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,7 +11,7 @@ import { periodProgress, type Period } from '@/core/time/periods';
 import { addUnit, floorUnit, HOUR, type WeekStart } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
-import { setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
+import { saveEntry, setDone, setLayerVisible, useEntries, useLayers } from '@/features/entries/data';
 import { useProgress } from '@/features/game/useProgress';
 import { setSetting, useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
@@ -33,6 +34,7 @@ export function TimelineScreen() {
   const now = useNow(10_000);
   const [scaleId, setScaleId] = useState<ScaleId>('hour');
   const direction = useSetting<Direction>('direction', 'down');
+  const calm = useSetting<string>('calm', 'off');
   const ws: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
   const [weekShift, setWeekShift] = useState(0);
   const allLayers = useLayers();
@@ -195,6 +197,10 @@ export function TimelineScreen() {
           onAdd={openAdd}
           onOpen={(id) => router.push({ pathname: '/entry/[id]', params: { id } })}
           onToggleDone={(e) => setDone(e.id, !e.done)}
+          onMove={(e, start, end) => saveEntry(e.id, { ...e, start, end })}
+          onLift={() => {
+            if (Platform.OS !== 'web' && calm !== 'on') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          }}
         />
       </View>
 

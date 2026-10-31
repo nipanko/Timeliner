@@ -1,4 +1,4 @@
-import { addUnit, floorUnit, MINUTE, type WeekStart } from '../time/units';
+import { addUnit, floorUnit, MINUTE, type Interval, type WeekStart } from '../time/units';
 import type { ScaleId } from '../timeline/scales';
 
 export type EntryKind = 'task' | 'todo' | 'note' | 'reminder';
@@ -29,4 +29,13 @@ export function entryTiming(kind: EntryKind, granularity: Granularity, at: numbe
 /** Move a time `n` steps earlier/later: 15 minutes for moments, otherwise one whole period. */
 export function nudge(at: number, granularity: Granularity, n: number): number {
   return granularity === 'moment' ? at + n * 15 * MINUTE : addUnit(at, granularity, n);
+}
+
+/** Drag to reschedule: move by `deltaMs`, snap the start to the nearest `snap` slot, keep the length. */
+export function reschedule(start: number, end: number | null, deltaMs: number, snap: Interval): { start: number; end: number | null } {
+  const raw = start + deltaMs;
+  const lo = floorUnit(raw, snap.unit, snap.step);
+  const hi = addUnit(lo, snap.unit, snap.step);
+  const next = raw - lo < hi - raw ? lo : hi;
+  return { start: next, end: end === null ? null : end + (next - start) };
 }

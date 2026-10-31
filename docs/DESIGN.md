@@ -95,7 +95,7 @@ Motion must feel **juicy but cheap**: only `transform` and `opacity` animate, so
 | Tap card | Card actions (prototype: complete / undo) |
 | Drag / scroll | Travel in time; "Back to now" returns to live follow |
 | Pinch | Zoom smoothly Sec ↔ Year (prototype uses the zoom toolbar) |
-| Long-press card, drag | Reschedule (later slice) |
+| Long-press card (350 ms), drag | Reschedule along the time axis; snaps to the zoom's slot, keeps the length. Moving before the hold ends scrolls the timeline instead. Moments only; whole days/weeks use the sheet's ‹ › |
 | Web: type in the capture bar | Goes to Inbox; natural-language time parsing later |
 
 ## 5. Accessibility

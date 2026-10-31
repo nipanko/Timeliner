@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -18,7 +18,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { floorUnit } from '@/core/time/units';
+import { reschedule } from '@/core/entries/timing';
+import { floorUnit, type Interval } from '@/core/time/units';
 import { layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
 import type { Scale } from '@/core/timeline/scales';
 import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
@@ -29,6 +30,8 @@ import { useLoop } from '@/ui/motion';
 import { KIND_ICONS, usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
+
+type PanGesture = ReturnType<typeof usePanGesture>;
 
 const ANCHOR = 0.3; // where "now" sits along the axis, measured from the past end
 const BUFFER = 1; // screens laid out beyond each edge
@@ -50,9 +53,13 @@ type Props = {
   onOpen: (entryId: string) => void;
   /** The round check on a card: complete or undo without opening it. */
   onToggleDone: (entry: Entry) => void;
+  /** Long-press and drag a card: its new, snapped times. */
+  onMove: (entry: Entry, start: number, end: number | null) => void;
+  /** A card was picked up (for a haptic). */
+  onLift: () => void;
 };
 
-export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen, onToggleDone }: Props) {
+export function TimelineView({ entries, layers, scale, direction, camera, onAdd, onOpen, onToggleDone, onMove, onLift }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
@@ -207,7 +214,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
                   <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
                 ))}
                 {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} onToggleDone={onToggleDone} now={minuteNow} />
+                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} onToggleDone={onToggleDone} onMove={onMove} onLift={onLift} msPerPx={(sign * span) / L} snap={scale.snap} outerPan={pan} now={minuteNow} />
                 ))}
                 {laid.majors.filter((m) => m.label).map((m) => (
                   <Text
@@ -269,10 +276,17 @@ type ItemProps = {
   laneW: number;
   onOpen: (entryId: string) => void;
   onToggleDone: (entry: Entry) => void;
+  onMove: (entry: Entry, start: number, end: number | null) => void;
+  onLift: () => void;
+  /** Time per pixel along the axis, signed by direction. */
+  msPerPx: number;
+  snap: Interval;
+  /** The timeline's own pan: it waits while a card decides whether it is being moved. */
+  outerPan: PanGesture;
   now: number;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, now }: ItemProps) {
+function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, onMove, onLift, msPerPx, snap, outerPan, now }: ItemProps) {
   const { entry, shape } = it;
   // Completing a card pops it (1 → 1.08 → 0.97 → 1); an active task's ring breathes (DESIGN.md §2).
   const pop = useSharedValue(1);
@@ -283,7 +297,46 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
   }, [entry.done, pop]);
   const active = entry.kind === 'task' && !entry.done && entry.end !== null && entry.start <= now && now < entry.end;
   const breath = useLoop(2000, active);
-  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.get() }] }));
+  // Long-press, then drag along the time axis to reschedule (moments only; snaps to the zoom's slot).
+  const shift = useSharedValue(0);
+  const lifted = useSharedValue(false);
+  const dragged = useSharedValue(false); // the release after a drag must not open the card
+  useLayoutEffect(() => {
+    shift.set(0);
+  }, [entry.start, shift]);
+  const drop = (px: number) => {
+    const next = reschedule(entry.start, entry.end, px * msPerPx, snap);
+    if (next.start === entry.start) shift.set(withTiming(0, { duration: 180 }));
+    else onMove(entry, next.start, next.end);
+  };
+  const move = usePanGesture({
+    enabled: entry.granularity === 'moment',
+    activateAfterLongPress: 350,
+    // Moving before the hold ends fails this gesture, so a quick drag on a card still scrolls the timeline.
+    failOffsetX: [-12, 12],
+    failOffsetY: [-12, 12],
+    block: outerPan,
+    onBegin: () => {
+      dragged.set(false);
+    },
+    onActivate: () => {
+      dragged.set(true);
+      lifted.set(true);
+      scheduleOnRN(onLift);
+    },
+    onUpdate: (e) => {
+      shift.set(vertical ? e.translationY : e.translationX);
+    },
+    onDeactivate: (e) => {
+      lifted.set(false);
+      scheduleOnRN(drop, vertical ? e.translationY : e.translationX);
+    },
+  });
+  const popStyle = useAnimatedStyle(() => ({
+    zIndex: lifted.get() ? 20 : 0,
+    opacity: lifted.get() ? 0.92 : 1,
+    transform: [vertical ? { translateY: shift.get() } : { translateX: shift.get() }, { scale: pop.get() * (lifted.get() ? 1.05 : 1) }],
+  }));
   const breathStyle = useAnimatedStyle(() => ({ opacity: 0.2 + 0.6 * breath.get() }));
   const sub = laneW / it.columns;
   const start = laneStart + it.column * sub;
@@ -306,46 +359,51 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
   const checkable = entry.kind !== 'note' && !flatPill && sub - 8 >= 96;
   const ink = skipped ? c.muted : layer.color.ink;
   return (
-    <Animated.View style={[styles.abs, frame, popStyle]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        onPress={() => onOpen(entry.id)}
-        style={({ pressed }) => [styles.abs, styles.fill, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }, pressed && styles.pressed]}
-      >
-        <View style={styles.row}>
-          {/* Tasks wear their layer's icon; the other kinds say what they are. */}
-          <Ionicons name={entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind]} size={12} color={ink} />
-          <Text numberOfLines={1} style={[styles.itemTitle, { color: ink }, entry.done && styles.struck]}>
-            {entry.title}
-          </Text>
-          {checkable && (
-            <Pressable
-              accessibilityRole="checkbox"
-              aria-checked={entry.done}
-              accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
-              hitSlop={11}
-              onPress={() => onToggleDone(entry)}
-              style={({ pressed }) => [styles.check, { borderColor: skipped ? c.lineStrong : layer.color.ink, backgroundColor: entry.done ? layer.color.ink : 'transparent' }, pressed && styles.pressed]}
-            >
-              {entry.done && (
-                <Animated.View entering={ZoomIn.springify()}>
-                  <Ionicons name="checkmark" size={13} color={layer.color.fill} />
-                </Animated.View>
+    <GestureDetector gesture={move}>
+      <View style={[styles.abs, frame]}>
+        <Animated.View style={[styles.abs, styles.fill, popStyle]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            accessibilityHint={entry.granularity === 'moment' ? 'Long-press and drag to move it' : undefined}
+            onPress={() => !dragged.get() && onOpen(entry.id)}
+            style={({ pressed }) => [styles.abs, styles.fill, look, shape === 'card' ? styles.card : styles.pillItem, !skipped && { boxShadow: c.raisedSm }, pressed && styles.pressed]}
+          >
+            <View style={styles.row}>
+              {/* Tasks wear their layer's icon; the other kinds say what they are. */}
+              <Ionicons name={entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind]} size={12} color={ink} />
+              <Text numberOfLines={1} style={[styles.itemTitle, { color: ink }, entry.done && styles.struck]}>
+                {entry.title}
+              </Text>
+              {checkable && (
+                <Pressable
+                  accessibilityRole="checkbox"
+                  aria-checked={entry.done}
+                  accessibilityLabel={`Mark ${entry.title} ${entry.done ? 'not done' : 'done'}`}
+                  hitSlop={11}
+                  onPress={() => onToggleDone(entry)}
+                  style={({ pressed }) => [styles.check, { borderColor: skipped ? c.lineStrong : layer.color.ink, backgroundColor: entry.done ? layer.color.ink : 'transparent' }, pressed && styles.pressed]}
+                >
+                  {entry.done && (
+                    <Animated.View entering={ZoomIn.springify()}>
+                      <Ionicons name="checkmark" size={13} color={layer.color.fill} />
+                    </Animated.View>
+                  )}
+                </Pressable>
               )}
-            </Pressable>
+            </View>
+            {showTime && entry.end !== null && (
+              <Text numberOfLines={1} style={[styles.itemTime, { color: layer.color.ink }]}>
+                {timeFmt.format(entry.start)}–{timeFmt.format(entry.end)}
+              </Text>
+            )}
+          </Pressable>
+          {active && (
+            <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, styles.breath, shape === 'card' ? styles.card : styles.pillItem, { borderColor: layer.color.ink }, breathStyle]} />
           )}
-        </View>
-        {showTime && entry.end !== null && (
-          <Text numberOfLines={1} style={[styles.itemTime, { color: layer.color.ink }]}>
-            {timeFmt.format(entry.start)}–{timeFmt.format(entry.end)}
-          </Text>
-        )}
-      </Pressable>
-      {active && (
-        <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, styles.breath, shape === 'card' ? styles.card : styles.pillItem, { borderColor: layer.color.ink }, breathStyle]} />
-      )}
-    </Animated.View>
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 }
 
