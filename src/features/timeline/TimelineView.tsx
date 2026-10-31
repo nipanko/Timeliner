@@ -20,7 +20,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { reschedule } from '@/core/entries/timing';
 import { floorUnit, type Interval } from '@/core/time/units';
-import { layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
+import { laneAfterDrag, layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
 import { zoomAfterPinch, type Scale, type ScaleId } from '@/core/timeline/scales';
 import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
 import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
@@ -53,8 +53,8 @@ type Props = {
   onOpen: (entryId: string) => void;
   /** The round check on a card: complete or undo without opening it. */
   onToggleDone: (entry: Entry) => void;
-  /** Long-press and drag a card: its new, snapped times. */
-  onMove: (entry: Entry, start: number, end: number | null) => void;
+  /** Long-press and drag a card: its new, snapped times and the layer (lane) it was dropped in. */
+  onMove: (entry: Entry, start: number, end: number | null, layerId: string) => void;
   /** A card was picked up (for a haptic). */
   onLift: () => void;
   /** Pinch (or ctrl/⌘ + scroll on web) ended: the finger-distance ratio, > 1 = zoom in. */
@@ -77,6 +77,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
   const L = Math.max(1, (vertical ? box.h : box.w) - HDR);
   const C = Math.max(1, (vertical ? box.w : box.h) - GUT);
   const laneW = C / Math.max(1, layers.length);
+  const laneIds = useMemo(() => layers.map((l) => l.id), [layers]);
 
   // React lays out a window around `center`; positions are measured from `origin`, so moving the
   // window never moves what is already on screen. The UI thread only translates the whole layer.
@@ -272,7 +273,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
                   <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
                 ))}
                 {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} onToggleDone={onToggleDone} onMove={onMove} onLift={onLift} msPerPx={(sign * span) / L} snap={scale.snap} outerPan={pan} now={minuteNow} />
+                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={GUT + it.lane * laneW} laneW={laneW} onOpen={onOpen} onToggleDone={onToggleDone} onMove={onMove} onLift={onLift} laneIds={laneIds} msPerPx={(sign * span) / L} snap={scale.snap} outerPan={pan} now={minuteNow} />
                 ))}
                 {laid.majors.filter((m) => m.label).map((m) => (
                   <Text
@@ -340,8 +341,10 @@ type ItemProps = {
   laneW: number;
   onOpen: (entryId: string) => void;
   onToggleDone: (entry: Entry) => void;
-  onMove: (entry: Entry, start: number, end: number | null) => void;
+  onMove: (entry: Entry, start: number, end: number | null, layerId: string) => void;
   onLift: () => void;
+  /** Lane order (visible layers), for dropping a card into another lane. */
+  laneIds: readonly string[];
   /** Time per pixel along the axis, signed by direction. */
   msPerPx: number;
   snap: Interval;
@@ -350,7 +353,7 @@ type ItemProps = {
   now: number;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, onMove, onLift, msPerPx, snap, outerPan, now }: ItemProps) {
+function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, onMove, onLift, laneIds, msPerPx, snap, outerPan, now }: ItemProps) {
   const { entry, shape } = it;
   // Completing a card pops it (1 → 1.08 → 0.97 → 1); an active task's ring breathes (DESIGN.md §2).
   const pop = useSharedValue(1);
@@ -361,17 +364,21 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
   }, [entry.done, pop]);
   const active = entry.kind === 'task' && !entry.done && entry.end !== null && entry.start <= now && now < entry.end;
   const breath = useLoop(2000, active);
-  // Long-press, then drag along the time axis to reschedule (moments only; snaps to the zoom's slot).
+  // Long-press, then drag: along the time axis reschedules (snaps to the zoom's slot), sideways changes lane (layer).
   const shift = useSharedValue(0);
+  const cross = useSharedValue(0);
   const lifted = useSharedValue(false);
   const dragged = useSharedValue(false); // the release after a drag must not open the card
   useLayoutEffect(() => {
     shift.set(0);
-  }, [entry.start, shift]);
-  const drop = (px: number) => {
-    const next = reschedule(entry.start, entry.end, px * msPerPx, snap);
-    if (next.start === entry.start) shift.set(withTiming(0, { duration: 180 }));
-    else onMove(entry, next.start, next.end);
+    cross.set(0);
+  }, [entry.start, entry.layerId, shift, cross]);
+  const drop = (alongPx: number, crossPx: number) => {
+    const next = reschedule(entry.start, entry.end, alongPx * msPerPx, snap);
+    const layerId = laneIds[laneAfterDrag(it.lane, crossPx, laneW, laneIds.length)] ?? entry.layerId;
+    if (next.start !== entry.start || layerId !== entry.layerId) return onMove(entry, next.start, next.end, layerId);
+    shift.set(withTiming(0, { duration: 180 }));
+    cross.set(withTiming(0, { duration: 180 }));
   };
   const move = usePanGesture({
     enabled: entry.granularity === 'moment',
@@ -390,16 +397,21 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
     },
     onUpdate: (e) => {
       shift.set(vertical ? e.translationY : e.translationX);
+      cross.set(vertical ? e.translationX : e.translationY);
     },
     onDeactivate: (e) => {
       lifted.set(false);
-      scheduleOnRN(drop, vertical ? e.translationY : e.translationX);
+      scheduleOnRN(drop, vertical ? e.translationY : e.translationX, vertical ? e.translationX : e.translationY);
     },
   });
   const popStyle = useAnimatedStyle(() => ({
     zIndex: lifted.get() ? 20 : 0,
     opacity: lifted.get() ? 0.92 : 1,
-    transform: [vertical ? { translateY: shift.get() } : { translateX: shift.get() }, { scale: pop.get() * (lifted.get() ? 1.05 : 1) }],
+    transform: [
+      { translateX: vertical ? cross.get() : shift.get() },
+      { translateY: vertical ? shift.get() : cross.get() },
+      { scale: pop.get() * (lifted.get() ? 1.05 : 1) },
+    ],
   }));
   const breathStyle = useAnimatedStyle(() => ({ opacity: 0.2 + 0.6 * breath.get() }));
   const sub = laneW / it.columns;

@@ -244,7 +244,7 @@ export function TimelineScreen() {
           onAdd={openAdd}
           onOpen={(id) => router.push({ pathname: '/entry/[id]', params: { id } })}
           onToggleDone={(e) => setDone(e.id, !e.done)}
-          onMove={(e, start, end) => saveEntry(e.id, { ...e, start, end })}
+          onMove={(e, start, end, layerId) => saveEntry(e.id, { ...e, start, end, layerId })}
           onZoom={(pinch) => setScaleId(zoomAfterPinch(scaleId, pinch))}
           onLift={() => {
             if (Platform.OS !== 'web' && calm !== 'on') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});

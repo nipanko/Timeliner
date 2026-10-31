@@ -1,5 +1,5 @@
 import { DAY, HOUR, MINUTE, WEEK } from '../time/units';
-import { layoutTimeline, type TimelineEntry } from './layout';
+import { laneAfterDrag, layoutTimeline, type TimelineEntry } from './layout';
 import type { Viewport } from './viewport';
 
 const now = Date.UTC(2026, 9, 30, 9, 0);
@@ -74,5 +74,15 @@ describe('layoutTimeline', () => {
     const [item] = layoutTimeline([task('hour', 0, 60)], ['work'], { ...view, direction: 'up' }, AXIS);
     expect(item.pos).toBeCloseTo(0.6);
     expect(item.size).toBeCloseTo(0.1);
+  });
+});
+
+describe('laneAfterDrag', () => {
+  it('switches after half a lane and stays on the board', () => {
+    expect(laneAfterDrag(1, 40, 100, 4)).toBe(1);
+    expect(laneAfterDrag(1, 60, 100, 4)).toBe(2);
+    expect(laneAfterDrag(1, -160, 100, 4)).toBe(0);
+    expect(laneAfterDrag(2, 900, 100, 4)).toBe(3);
+    expect(laneAfterDrag(0, -900, 100, 4)).toBe(0);
   });
 });

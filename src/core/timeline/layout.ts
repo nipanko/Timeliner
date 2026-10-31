@@ -103,3 +103,9 @@ function assignColumns(items: PlacedItem[]) {
   }
   closeGroup();
 }
+
+/** Dragging a card sideways: which lane it lands in. Half a lane is enough to switch; stays on the board. */
+export function laneAfterDrag(lane: number, crossPx: number, laneWidth: number, laneCount: number): number {
+  if (laneWidth <= 0 || laneCount <= 0) return lane;
+  return Math.min(laneCount - 1, Math.max(0, lane + Math.round(crossPx / laneWidth)));
+}

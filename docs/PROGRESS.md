@@ -5,13 +5,17 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox and Tick the mascot (all merged 1 Nov). 64 tests, typecheck and lint green.
-- **Resume with:** everything merged. Strongly suggested next: first run on a real phone (nothing since slice 2 has run on a device: haptics, sounds, notifications, gestures, animations). Ideas after: drag across lanes, Tick riding the now-line, continuous zoom, web capture bar.
+- **Resume with:** Nipanko tries dragging a card sideways into another lane on `timeline/lanes`, then says merge. Suggested next: repeating tasks (daily / weekdays / weekly), or the first phone run.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (8)
+- Mascot merged. Nipanko had no preference, so: branch `timeline/lanes`, drag a card across lanes. `core/timeline/layout.ts` `laneAfterDrag` (half a lane switches, clamps to the board; tested). The lifted card follows the finger on both axes; the drop saves the new time and layer together. 65 tests.
+- Not verified in the pane: the browser tool's hold is sometimes shorter than 350 ms (then it counts as a tap), and Nipanko was using the pane at the same time. Time-axis drag was verified on 1 Nov (3). Needs a try by hand (hold ⅓ s, drag sideways).
+
 ### 2026-11-01 (7)
 - Inbox merged. Branch `mascot`: react-native-svg (new dependency). `core/game/mascot.ts` mood rule (2 tests); `features/game/Tick.tsx` drawing with 5 faces, idle bob, jump + squash + cheer face when XP goes up (only after progress has loaded, or it cheered on every screen open). In the Timeline HUD, Focus (focused face while running), level-up card, Settings avatar. 64 tests.
 - Checked on the web build: Tick in all four places; undid and redid a task → header Tick went smiling → cheering → smiling. Jump itself not visible (pane asks for reduced motion). Not run on a phone.
