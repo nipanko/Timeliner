@@ -35,8 +35,9 @@ Steps (Nipanko does the account parts; I prepare the rest):
 6. **CI (GitHub Actions):** typecheck + lint + tests + `build:web` on every pull request. `main` only merges green (CLAUDE.md rule).
 
 What web users get at this stage: the full app, private to their browser.
-- Clearing site data deletes it, so we add **Export / Import (JSON)** in Settings before inviting people.
-- That's the bridge until accounts exist.
+- Clearing site data deletes it. **Settings › Your data** (built 1 Nov) exports a backup file and restores one: the file is fully validated, and the current data is downloaded first. That's the bridge until accounts exist.
+- The page asks the browser for persistent storage (granted to installed or frequently used sites), so it isn't evicted when space runs low.
+- **Known risk:** the browser database (expo-sqlite's OPFS access-handle pool) can only be open in one tab at a time, and on 31 Oct/1 Nov the test browser's data was found reset twice, cause unknown (likely the test browser clearing storage). Watch for this in real browsers; cloud sync (§4) is the real fix.
 
 ## 2. Phones: App Store and Google Play (Phase 2a)
 
@@ -157,7 +158,7 @@ The GST/tax treatment of these goes in the Second Brain notes (`03 Tried Indie/S
 
 ## 9. Order of work
 
-1. **Now:** web online on a Cloudflare preview URL; test Safari/iPhone; GitHub CI; Export/Import in Settings; privacy policy draft.
+1. **Now:** web online on a Cloudflare preview URL; test Safari/iPhone; privacy policy draft. (GitHub CI workflow and Export/Import: done 1 Nov.)
 2. **Phone run:** dev build on your phone; fix what only shows on devices.
 3. **Phase 2a:** EAS builds → TestFlight / Play internal for friends; store listings.
 4. **Phase 2b:** Supabase project, sign-in (email code, Apple, Google), age gate + parental consent, sync (evaluate PowerSync first), account deletion.

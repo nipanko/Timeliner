@@ -5,13 +5,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes and the web app (installable, offline; all merged 1 Nov). 65 tests, typecheck and lint green.
-- **Resume with:** web app merged. Next per `docs/LAUNCH.md` §9: Nipanko creates the GitHub private repo + Cloudflare account → connect Pages (build `npm ci && npm run build:web`, output `dist`) → test Safari/iPhone; meanwhile I can add GitHub CI and Export/Import in Settings.
+- **Resume with:** Nipanko says merge for `ci/github` and `settings/backup`. Then: GitHub repo + Cloudflare Pages (Nipanko's accounts), Safari/iPhone test, phone run.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** create GitHub private repo + Cloudflare account (business email, 2-factor); decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (10)
+- Web app merged. Branch `ci/github`: `.github/workflows/ci.yml` (npm ci → typecheck → `expo lint --no-cache` → jest → build:web on every PR and push to main; typecheck doesn't need the generated route types). Runs once the GitHub repo exists.
+- Branch `settings/backup`: `core/backup.ts` (format v1; validates every table, field type, enum, link and duplicate; drops unknown fields; 4 tests), `db/backup.ts` (export all; replace all in one transaction, parents first), Settings › Your data (web: download a file / restore from a file with a confirm card; a safety copy of the current data downloads first; phone: export via the share sheet, restore later). `index.html` asks for persistent storage. 69 tests.
+- Checked on the web build (downloads and the file picker intercepted in the page): export, restore with a marked test item (safety copy identical to the data replaced, item arrived), restored the original byte-for-byte, damaged file refused.
+- **Data loss in the test browser:** between ~1:25 and 1:30 PM the pane's database was found fresh (0 XP, starter layers, no settings); it was also empty this morning. Nothing in the app deletes it; expo-sqlite's access-handle pool fails rather than wipes when another tab holds it. Most likely the pane clearing site storage; not proven. Recorded as a risk in LAUNCH.md.
+
 ### 2026-11-01 (9)
 - Lane drag merged (Nipanko confirmed it works). New features paused; Nipanko asked to make it a web app and for a launch plan (deploy, accounts, scale).
 - Branch `web/app`: `public/index.html` (Expo's template override: manifest, theme colour, iPhone home-screen tags, no white flash), `manifest.webmanifest` (+ shortcuts to Inbox / Review), Tick app icons for web, iOS and Android (drawn by a script, replaces Expo's template icons), `public/sw.js` + `scripts/precache.js` (`npm run build:web` writes every build file and a version into the worker; old deploys' caches are deleted). Fonts imported per weight (build 11 MB → 5.2 MB). Wide screens: scroll screens, sheets, Inbox and Focus capped and centred. `_headers`: `COEP require-corp` (Safari lacks `credentialless`), nosniff, referrer and permissions policy, long cache for hashed bundles.

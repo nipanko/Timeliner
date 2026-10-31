@@ -13,6 +13,7 @@ import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { PALETTES, usePalette, type IconName, type Palette, type ThemePreference } from '@/ui/theme';
 import { F } from '@/ui/type';
 
+import { BackupSection } from './BackupSection';
 import { setSetting, useSetting } from './data';
 import { LayersSection } from './LayersSection';
 
@@ -119,6 +120,11 @@ export function SettingsScreen() {
       </Reveal>
 
       <Reveal index={4}>
+        <Text style={[styles.section, { color: c.muted }]}>YOUR DATA</Text>
+        <BackupSection />
+      </Reveal>
+
+      <Reveal index={5}>
         <Text style={[styles.section, { color: c.muted }]}>ABOUT</Text>
         <View style={[styles.about, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
           <Ionicons name="lock-closed" size={16} color={c.muted} />

@@ -25,6 +25,8 @@
     <noscript>TIMELINER needs JavaScript.</noscript>
     <div id="root"></div>
     <script>
+      // All data lives in this browser: ask it not to evict our storage when space runs low.
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
       // Offline after the first visit. Only for exported builds (the dev server's bundles change all the time).
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
