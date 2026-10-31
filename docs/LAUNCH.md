@@ -55,7 +55,7 @@ What web users get at this stage: the full app, private to their browser.
   - support URL and privacy policy URL.
 - **Before the first store build:** run it on your phone (nothing since slice 2 has run on a device): notifications, haptics, sounds, gestures.
 
-## 3. Accounts (Phase 2b)
+## 3. Accounts (Phase 2b) — step 2 built 1 Nov (`accounts/auth`)
 
 **Principle: the account is optional.** The app keeps working without one. An account adds: backup, sync across phone + web, and (later) the League.
 

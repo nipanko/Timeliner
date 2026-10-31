@@ -16,6 +16,8 @@ import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { PALETTES, usePalette, type IconName, type Palette, type ThemePreference } from '@/ui/theme';
 import { F } from '@/ui/type';
 
+import { AccountSection } from '@/features/account/AccountSection';
+
 import { BackupSection } from './BackupSection';
 import { setSetting, useClock24, useSetting } from './data';
 import { LayersSection } from './LayersSection';
@@ -134,7 +136,9 @@ export function SettingsScreen() {
       </Reveal>
 
       <Reveal index={3}>
-        <Text style={[styles.section, { color: c.muted }]}>YOUR DATA</Text>
+        <Text style={[styles.section, { color: c.muted }]}>ACCOUNT</Text>
+        <AccountSection />
+        <Text style={[styles.section, styles.sectionGap, { color: c.muted }]}>YOUR DATA</Text>
         <BackupSection />
       </Reveal>
 
@@ -243,6 +247,7 @@ const styles = StyleSheet.create({
   stat: { flex: 1, borderRadius: 16, padding: 10, gap: 2 },
   statValue: { fontSize: 20, fontFamily: F.display, fontVariant: ['tabular-nums'] },
   statLabel: { fontSize: 11, fontFamily: F.semi },
+  sectionGap: { marginTop: 14 },
   section: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1.2, marginBottom: 8, marginLeft: 4 },
   tiles: { flexDirection: 'row', gap: 10 },
   tile: { flex: 1, borderRadius: 18, padding: 8, gap: 8 },
