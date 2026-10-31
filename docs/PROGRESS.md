@@ -4,8 +4,8 @@ Claude reads this first in every session and updates it at the end. Newest entry
 
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
-- **Where the code is:** `main` has scaffold + slices 1–7 + the pro look (merged 1 Nov). Branch `layers/settings` (slice 8) not merged. 55 tests, typecheck and lint green.
-- **Resume with:** Nipanko tries slice 8 in Settings, then says merge. Then: motion polish / drag to reschedule (ask which).
+- **Where the code is:** `main` has scaffold + slices 1–8 + the pro look (all merged 1 Nov). 55 tests, typecheck and lint green.
+- **Resume with:** slice 8 merged. Next: motion polish / drag to reschedule (ask which).
 - **Still open from slices 2–3:** drag a card to reschedule; pinch zoom; mascot (needs react-native-svg); windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
