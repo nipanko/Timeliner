@@ -163,7 +163,15 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
     let factor = 1;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
+      if (!e.ctrlKey && !e.metaKey) {
+        // Plain wheel / two-finger trackpad scroll travels through time, without end (the window re-centres).
+        e.preventDefault();
+        const px = vertical ? e.deltaY : Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        cancelAnimation(anchorTime);
+        following.set(false);
+        anchorTime.set(anchorTime.get() + (sign * px * span) / L);
+        return;
+      }
       e.preventDefault(); // or the browser zooms the whole page
       factor *= Math.exp(-e.deltaY / 120);
       setPreview(zoomAfterPinch(scale.id, factor));
@@ -179,7 +187,7 @@ export function TimelineView({ entries, layers, scale, direction, camera, onAdd,
       el.removeEventListener('wheel', onWheel);
       clearTimeout(timer);
     };
-  }, [scale.id]);
+  }, [scale.id, vertical, sign, span, L, anchorTime, following]);
 
   const backToNow = () => {
     setShowNowButton(false);
