@@ -6,13 +6,16 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** branch timeline merged and deployed (1 Nov). Nipanko tests the live site on iPhone / Safari (storage fix + new timeline) and reports; then: node size on touch, phone run, accounts (LAUNCH.md §9).
+- **Resume with:** web app live and working on iPhone. Next (LAUNCH.md §9): first native phone run (Expo dev build: haptics, sounds, notifications), privacy policy draft, then accounts + sync (Supabase).
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (13)
+- Nipanko confirmed the live site works on iPhone Safari (storage fix + branch timeline). Safari launch blocker closed.
+
 ### 2026-11-01 (12)
 - Fixes merged and pushed (live on Cloudflare). Branch `timeline/branches`: the branch timeline. Trunk beside the time labels (dim line + lit trail using the veil's transform), Tick on the trunk at now, each entry a branch: connector, node (tap to complete), title + time / Done / Next up / Missed, length bar; goals get a trunk flag; `compact` items render as branches too. Next-up = earliest open timed entry ahead. Engine, drag (time + lanes), zoom and scrolling unchanged. Phone header: short month, smaller buttons, no Tick in the level chip, XP as "51/100".
 - Backup restore now reloads the app afterwards (screens showed stale numbers until a reload).

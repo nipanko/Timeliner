@@ -31,7 +31,7 @@ Steps (Nipanko does the account parts; I prepare the rest):
 4. **Domain** (when bought) → Cloudflare DNS → Pages custom domain. HTTPS is automatic.
 5. **Test on real browsers before sharing the link:**
    - Chrome, Edge, Firefox;
-   - Safari on Mac and **iPhone (launch blocker)**. We switched to `COEP: require-corp` because Safari doesn't support `credentialless`; confirm the database starts there.
+   - Safari on Mac and **iPhone (confirmed working 1 Nov)**. We switched to `COEP: require-corp` because Safari doesn't support `credentialless`; confirm the database starts there.
 6. **CI (GitHub Actions):** typecheck + lint + tests + `build:web` on every pull request. `main` only merges green (CLAUDE.md rule).
 
 What web users get at this stage: the full app, private to their browser.
