@@ -57,7 +57,8 @@ export function Reveal({ index, children }: { index: number; children: ReactNode
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingBottom: 28, gap: 14 },
+  // On wide screens (web, tablets) the column stays readable and centred.
+  content: { paddingHorizontal: 16, paddingBottom: 28, gap: 14, width: '100%', maxWidth: 720, alignSelf: 'center' },
   titleBlock: { transformOrigin: 'left center', gap: 2, marginBottom: 4 },
   title: { fontSize: 32, fontFamily: F.display, letterSpacing: -0.8 },
   subtitle: { fontSize: 13, fontFamily: F.semi },

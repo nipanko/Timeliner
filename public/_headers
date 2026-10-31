@@ -1,3 +1,14 @@
+# Cloudflare Pages. The on-device database (SQLite in a web worker) needs cross-origin isolation.
+# require-corp works in every major browser incl. Safari (credentialless does not); everything we load is same-origin.
 /*
-  Cross-Origin-Embedder-Policy: credentialless
+  Cross-Origin-Embedder-Policy: require-corp
   Cross-Origin-Opener-Policy: same-origin
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/sw.js
+  Cache-Control: no-cache
+
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable

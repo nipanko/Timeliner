@@ -212,7 +212,7 @@ Already installed: Reanimated, Gesture Handler, Expo Router.
 
 ## 10. Later (Phase 2+)
 - Supabase sync: same tables + `userId`, Row Level Security, `deletedAt` for soft deletes, last write wins on `updatedAt`.
-- Web dashboard: same app built for web, horizontal direction by default (layout in DESIGN.md §3.7). Web output is a single-page app; local SQLite on web needs the page served with `Cross-Origin-Embedder-Policy: credentialless` + `Cross-Origin-Opener-Policy: same-origin` (`public/_headers` for Cloudflare Pages). `expo start --web` can't add them to its HTML, so test the web build with `npm run web:preview`.
+- Web dashboard: same app built for web, horizontal direction by default (layout in DESIGN.md §3.7). Web output is a single-page app; local SQLite on web needs the page served with `Cross-Origin-Embedder-Policy: require-corp` (Safari doesn't support `credentialless`) + `Cross-Origin-Opener-Policy: same-origin` (`public/_headers` for Cloudflare Pages). `expo start --web` can't add them to its HTML, so test the web build with `npm run web:preview` (= `npm run build:web` + local server). The web app is installable (`public/manifest.webmanifest`, `public/index.html`) and offline-capable (`public/sw.js`, precache list written by `scripts/precache.js`). Launch plan: `docs/LAUNCH.md`.
 - League (§12), radial clock view, recurring entries, widgets, calendar import.
 
 ## 11. Motion that stays smooth on every device

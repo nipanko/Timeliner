@@ -230,7 +230,7 @@ function Chip({ c, label, icon, a11y, on = false, onPress, tall, flat, square }:
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, width: '100%', maxWidth: 640, alignSelf: 'center' }, // a sheet, not a full-width page, on wide screens
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingTop: 10 },
   textButton: { minWidth: 96, height: 44, justifyContent: 'center', paddingHorizontal: 8 },
   textButtonLabel: { fontSize: 14, fontFamily: F.bold },

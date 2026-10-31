@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+    <meta name="description" content="Your life on one live timeline, from seconds to years. A forgiving productivity game." />
+    <meta name="theme-color" content="#0D0E12" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ECE9E3" media="(prefers-color-scheme: light)" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TIMELINER" />
+    <!-- react-native-web reset; the ground colour avoids a white flash before the app paints. -->
+    <style id="expo-reset">
+      html, body { height: 100%; }
+      body { overflow: hidden; background: #0d0e12; }
+      @media (prefers-color-scheme: light) { body { background: #ece9e3; } }
+      #root { display: flex; height: 100%; flex: 1; }
+    </style>
+  </head>
+  <body>
+    <noscript>TIMELINER needs JavaScript.</noscript>
+    <div id="root"></div>
+    <script>
+      // Offline after the first visit. Only for exported builds (the dev server's bundles change all the time).
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          if (!document.querySelector('script[src*="/_expo/static/js/web/"]')) return;
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
+  </body>
+</html>

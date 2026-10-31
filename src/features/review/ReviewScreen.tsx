@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   smallButtonText: { fontSize: 12.5, fontFamily: F.bold },
   input: { height: 48, borderRadius: 14, paddingHorizontal: 14, fontSize: 15, fontFamily: F.semi },
   best: { fontSize: 17, fontFamily: F.display, lineHeight: 23 },
-  footer: { paddingHorizontal: 16, paddingBottom: 6 },
+  footer: { paddingHorizontal: 16, paddingBottom: 6, width: '100%', maxWidth: 720, alignSelf: 'center' },
   closeDay: { height: 56, borderRadius: 18, overflow: 'hidden' },
   closeDayFill: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   closeDayText: { fontSize: 16, fontFamily: F.bold },

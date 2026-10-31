@@ -5,13 +5,19 @@ Claude reads this first in every session and updates it at the end. Newest entry
 ## Now
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot and drag across lanes (all merged 1 Nov). 65 tests, typecheck and lint green.
-- **Resume with:** everything merged. Suggested next: repeating tasks (daily / weekdays / weekly), or the first phone run.
+- **Resume with:** Nipanko reviews `docs/LAUNCH.md` and the web app on `web/app`, then says merge. Next per LAUNCH.md §9: GitHub repo + Cloudflare Pages (Nipanko creates the accounts), Safari/iPhone test, CI, Export/Import, then the phone run.
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = lanes; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-01 (9)
+- Lane drag merged (Nipanko confirmed it works). New features paused; Nipanko asked to make it a web app and for a launch plan (deploy, accounts, scale).
+- Branch `web/app`: `public/index.html` (Expo's template override: manifest, theme colour, iPhone home-screen tags, no white flash), `manifest.webmanifest` (+ shortcuts to Inbox / Review), Tick app icons for web, iOS and Android (drawn by a script, replaces Expo's template icons), `public/sw.js` + `scripts/precache.js` (`npm run build:web` writes every build file and a version into the worker; old deploys' caches are deleted). Fonts imported per weight (build 11 MB → 5.2 MB). Wide screens: scroll screens, sheets, Inbox and Focus capped and centred. `_headers`: `COEP require-corp` (Safari lacks `credentialless`), nosniff, referrer and permissions policy, long cache for hashed bundles.
+- Checked on the web build: installable manifest and icons served, service worker controls the page, 45 files cached after one visit; with the server stopped, the app starts, the database opens, every tab and the Inbox work, and a hard reload on `/review` works. Still cross-origin isolated with require-corp. Not checked: Safari / iPhone (no Safari here).
+- Wrote `docs/LAUNCH.md`: Cloudflare Pages, EAS for stores, optional accounts on Supabase (email code + Apple + Google, age gate + parental consent), sync (evaluate PowerSync vs hand-rolled), scaling, security, privacy law (DPDP, GDPR, COPPA), environments, costs, order of work, decisions needed.
+
 ### 2026-11-01 (8)
 - Mascot merged. Nipanko had no preference, so: branch `timeline/lanes`, drag a card across lanes. `core/timeline/layout.ts` `laneAfterDrag` (half a lane switches, clamps to the board; tested). The lifted card follows the finger on both axes; the drop saves the new time and layer together. 65 tests.
 - Not verified in the pane: the browser tool's hold is sometimes shorter than 350 ms (then it counts as a tap), and Nipanko was using the pane at the same time. Time-axis drag was verified on 1 Nov (3). Nipanko tried it by hand: works.

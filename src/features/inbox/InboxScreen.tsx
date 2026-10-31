@@ -119,7 +119,7 @@ function Row({ item, now }: { item: InboxItem; now: number }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, width: '100%', maxWidth: 640, alignSelf: 'center' }, // a sheet, not a full-width page, on wide screens
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingTop: 10 },
   side: { minWidth: 80, height: 44, justifyContent: 'center', paddingHorizontal: 8 },
   right: { alignItems: 'flex-end' },

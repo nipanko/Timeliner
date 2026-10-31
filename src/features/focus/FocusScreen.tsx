@@ -152,7 +152,7 @@ function ParkThought() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 16 },
+  screen: { flex: 1, paddingHorizontal: 16, width: '100%', maxWidth: 640, alignSelf: 'center' },
   back: { alignSelf: 'flex-start', height: 44, paddingLeft: 10, paddingRight: 14, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 2 },
   backText: { fontSize: 14, fontFamily: F.bold },
   middle: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
