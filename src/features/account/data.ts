@@ -18,8 +18,8 @@ export function useSession(): Session | null | undefined {
   return session;
 }
 
-/** This user's profile row (null until created), refreshed when the session changes. */
-export function useProfile(session: Session | null | undefined): Profile | null | undefined {
+/** This user's profile row (null until created), refreshed when the session or `refresh` changes. */
+export function useProfile(session: Session | null | undefined, refresh = 0): Profile | null | undefined {
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
   const userId = session?.user.id;
   useEffect(() => {
@@ -34,7 +34,7 @@ export function useProfile(session: Session | null | undefined): Profile | null 
     return () => {
       live = false;
     };
-  }, [userId]);
+  }, [userId, refresh]);
   return userId ? profile : null;
 }
 
@@ -61,6 +61,25 @@ export async function createProfile(userId: string, birthYear: number) {
 
 export async function signOut() {
   await supabase?.auth.signOut();
+}
+
+/**
+ * 13-17: asks a parent by email (Edge Function `send-consent-email`, which makes the confirm link
+ * server-side so this device never sees it). Throws with the server's plain-English message.
+ */
+export async function requestParentConsent(parentEmail: string) {
+  if (!supabase) return;
+  const { error } = await supabase.functions.invoke('send-consent-email', { body: { parentEmail } });
+  if (!error) return;
+  const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+  throw new Error(body?.error ?? 'Could not send the email. Try again later.');
+}
+
+/** The parent's link: confirms with the token from the email and their name. No sign-in needed. */
+export async function confirmParentConsent(token: string, parentName: string) {
+  if (!supabase) throw new Error('Accounts are not set up in this build.');
+  const { error } = await supabase.rpc('confirm_parent_consent', { consent_token: token, parent_name: parentName });
+  if (error) throw new Error(error.message);
 }
 
 /**

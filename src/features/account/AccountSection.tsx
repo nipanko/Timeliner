@@ -1,20 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 import { usePalette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
-import { deleteAccount, signOut, useProfile, useSession } from './data';
+import { deleteAccount, requestParentConsent, signOut, useProfile, useSession } from './data';
 import { runSync, useSyncStatus } from './sync';
 
 /** Settings › Account: sign in for backup / sync, or see who you're signed in as. Hidden if accounts aren't configured. */
 export function AccountSection() {
   const c = usePalette();
   const session = useSession();
-  const profile = useProfile(session);
+  const [refresh, setRefresh] = useState(0);
+  const profile = useProfile(session, refresh);
+  const [parentEmail, setParentEmail] = useState('');
+  const [consent, setConsent] = useState<{ state: 'idle' | 'sending' | 'sent'; error?: string }>({ state: 'idle' });
   const sync = useSyncStatus();
   const [deleting, setDeleting] = useState<'ask' | 'busy' | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -59,6 +62,47 @@ export function AccountSection() {
           <Text style={[styles.sub, { color: c.muted }]}>{status}</Text>
         </View>
       </View>
+      {profile?.consent === 'pending' && (
+        <View style={[styles.consent, { backgroundColor: c.tray }]}>
+          <Text style={[styles.sub, { color: c.ink }]}>
+            You&apos;re under 18, so a parent or guardian needs to agree before your plans sync. Enter their email; they get a link to confirm.
+          </Text>
+          <TextInput
+            value={parentEmail}
+            onChangeText={setParentEmail}
+            inputMode="email"
+            autoCapitalize="none"
+            autoComplete="off"
+            placeholder="parent@example.com"
+            placeholderTextColor={c.muted}
+            accessibilityLabel="Parent's email"
+            style={[styles.input, { color: c.ink, backgroundColor: c.panel }]}
+          />
+          {consent.error && <Text style={[styles.sub, { color: c.danger }]}>{consent.error}</Text>}
+          {consent.state === 'sent' && <Text style={[styles.sub, { color: c.accentText }]}>Sent. Ask them to open the email, then tap Check again.</Text>}
+          <View style={styles.buttons}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={consent.state === 'sending' || !parentEmail.trim()}
+              onPress={async () => {
+                setConsent({ state: 'sending' });
+                try {
+                  await requestParentConsent(parentEmail.trim());
+                  setConsent({ state: 'sent' });
+                } catch (e) {
+                  setConsent({ state: 'idle', error: e instanceof Error ? e.message : 'Could not send. Try again.' });
+                }
+              }}
+              style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: parentEmail.trim() ? c.accent : c.chip }, pressed && styles.pressed]}
+            >
+              <Text style={[styles.signOutText, { color: parentEmail.trim() ? c.accentInk : c.muted }]}>{consent.state === 'sending' ? 'Sending…' : 'Ask my parent'}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setRefresh((r) => r + 1)} style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: c.chip }, pressed && styles.pressed]}>
+              <Text style={[styles.signOutText, { color: c.ink }]}>Check again</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       <View style={styles.buttons}>
         {canSync && (
           <Pressable accessibilityRole="button" onPress={runSync} style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: c.accent }, pressed && styles.pressed]}>
@@ -117,6 +161,8 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', gap: 8 },
   signOut: { height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { fontSize: 14, fontFamily: F.bold },
+  consent: { borderRadius: 14, padding: 10, gap: 8 },
+  input: { height: 44, borderRadius: 12, paddingHorizontal: 12, fontSize: 15, fontFamily: F.semi },
   danger: { borderWidth: 2, borderRadius: 14, padding: 10, gap: 8 },
   deleteLink: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12 },
   deleteText: { fontSize: 13, fontFamily: F.bold },
