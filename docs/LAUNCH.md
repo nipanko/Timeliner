@@ -170,3 +170,26 @@ The GST/tax treatment of these goes in the Second Brain notes (`03 Tried Indie/S
 - Create: GitHub private repo, Cloudflare account, (later) Supabase, Apple Developer, Google Play Console, business email with 2-factor everywhere.
 - Choose: the domain, and the name check (already on the to-do list).
 - Confirm: sync approach (PowerSync vs hand-rolled), sign-in methods (email code + Apple + Google suggested), and the main database region (Mumbai suggested).
+
+## 11. Version 1 release plan (decided 2 Nov)
+
+Nipanko's choices: **web first, Android right after; accounts + sync in v1; full QA pass + fixes; a beta with friends before announcing.**
+
+### Nipanko's steps (accounts can't be tested until 1–6 are done)
+1. **Domain:** finish the name check, buy the domain, add it to Cloudflare (DNS).
+2. **Email sender (Resend):** create an account, add the domain, add the DNS records Resend shows (in Cloudflare DNS), wait for "Verified".
+3. **Supabase → Authentication → SMTP settings:** turn on custom SMTP with Resend (host `smtp.resend.com`, port `465`, user `resend`, password = your Resend API key, sender `TIMELINER <hello@your-domain>`). The key stays in Supabase only; never paste it in chat or in the repo.
+4. **Supabase → Authentication → Email templates → Magic link:** replace the body with the code template Claude provides (shows `{{ .Token }}`, the 6-digit code, instead of a link).
+5. **Supabase → SQL editor:** run the migration files Claude points to (profiles, sync tables, completions).
+6. **Supabase → Authentication → URL configuration:** Site URL = `https://your-domain`; add the Cloudflare preview URL as a redirect URL.
+7. **Cloudflare Pages → Settings → Environment variables (production + preview):** `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` (the *publishable* key only), then connect the custom domain.
+8. **Legal details:** your legal name / business name, a contact email and postal address for the privacy policy (the `[brackets]` in `docs/PRIVACY.md`).
+9. **For Android right after:** Google Play Console account (≈ $25), an Android phone for the first device run, and 12+ testers for Google's 14-day closed test.
+
+### Claude's steps
+1. **Full QA pass** of every screen at phone and desktop size; fix what it finds (branch `release/v1-qa`).
+2. **Accounts + sync onto today's app:** bring `accounts/auth` and `sync/engine` up to date with main, add `completions` to sync, **Delete account** (stores require it), parental consent for 13–17, test against Supabase once steps 1–7 are done.
+3. **Legal pages in the app:** Privacy (from `docs/PRIVACY.md`), Terms of Use, "What we store", linked from Settings and the sign-in screen.
+4. **Version 1.0.0:** version shown in Settings → About, a short changelog.
+5. **Beta kit:** a one-page test checklist and an in-app "Send feedback" link for 5–10 friends.
+6. **Android:** EAS config (`eas.json`, app ids), a development build for Nipanko's phone, fix device-only issues, then a Play internal test.
