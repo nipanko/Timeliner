@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
@@ -20,6 +20,8 @@ const INK = '#2A1406';
 /** "Tick", the orange clay blob with a sprout (DESIGN.md §1). Bobs when idle, jumps when you gain. */
 export function Tick({ size, mood, celebrate, bob = true }: Props) {
   const reduce = useReducedMotion();
+  // Gradient ids are global on the web; a hidden tab's Tick with the same id would paint this one black.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const idle = useLoop(2400, bob);
   const lift = useSharedValue(0);
   const squash = useSharedValue(1);
@@ -60,21 +62,21 @@ export function Tick({ size, mood, celebrate, bob = true }: Props) {
       <Animated.View style={[StyleSheet.absoluteFill, body]}>
         <Svg width={size} height={size} viewBox="0 0 100 100">
           <Defs>
-            <LinearGradient id="tickBody" x1="0" y1="0" x2="0.3" y2="1">
+            <LinearGradient id={`tickBody${uid}`} x1="0" y1="0" x2="0.3" y2="1">
               <Stop offset="0" stopColor="#FFB45E" />
               <Stop offset="1" stopColor="#FF7438" />
             </LinearGradient>
-            <LinearGradient id="tickLeaf" x1="0" y1="0" x2="1" y2="1">
+            <LinearGradient id={`tickLeaf${uid}`} x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0" stopColor="#D8F77A" />
               <Stop offset="1" stopColor="#7CC43F" />
             </LinearGradient>
           </Defs>
           {/* sprout */}
           <Path d="M50 24 C50 18 50 14 51 9" stroke="#6BAA32" strokeWidth={3} strokeLinecap="round" fill="none" />
-          <Path d="M51 12 C42 4 31 6 29 12 C36 17 45 17 51 12 Z" fill="url(#tickLeaf)" />
-          <Path d="M51 11 C58 2 70 3 72 9 C65 15 56 15 51 11 Z" fill="url(#tickLeaf)" />
+          <Path d="M51 12 C42 4 31 6 29 12 C36 17 45 17 51 12 Z" fill={`url(#tickLeaf${uid})`} />
+          <Path d="M51 11 C58 2 70 3 72 9 C65 15 56 15 51 11 Z" fill={`url(#tickLeaf${uid})`} />
           {/* body + clay light */}
-          <Path d="M50 22 C75 22 89 39 89 61 C89 81 72 92 50 92 C28 92 11 81 11 61 C11 39 25 22 50 22 Z" fill="url(#tickBody)" />
+          <Path d="M50 22 C75 22 89 39 89 61 C89 81 72 92 50 92 C28 92 11 81 11 61 C11 39 25 22 50 22 Z" fill={`url(#tickBody${uid})`} />
           <Ellipse cx={34} cy={38} rx={12} ry={7} fill="#fff" opacity={0.32} transform="rotate(-25 34 38)" />
           <Path d="M20 76 C30 88 70 88 80 76 C72 86 28 86 20 76 Z" fill="#C24A16" opacity={0.25} />
           {/* cheeks */}
