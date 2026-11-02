@@ -179,8 +179,9 @@ Nipanko's choices: **web first, Android right after; accounts + sync in v1; full
 1. **Domain:** finish the name check, buy the domain, add it to Cloudflare (DNS).
 2. **Email sender (Resend):** create an account, add the domain, add the DNS records Resend shows (in Cloudflare DNS), wait for "Verified".
 3. **Supabase → Authentication → SMTP settings:** turn on custom SMTP with Resend (host `smtp.resend.com`, port `465`, user `resend`, password = your Resend API key, sender `TIMELINER <hello@your-domain>`). The key stays in Supabase only; never paste it in chat or in the repo.
-4. **Supabase → Authentication → Email templates → Magic link:** replace the body with the code template Claude provides (shows `{{ .Token }}`, the 6-digit code, instead of a link).
-5. **Supabase → SQL editor:** run the migration files Claude points to (profiles, sync tables, completions).
+4. **Supabase → Authentication → Email templates → Magic link:** subject "Your TIMELINER sign-in code", body = `supabase/email-templates/magic-link.html` (shows the 6-digit `{{ .Token }}` instead of a link).
+5. **Supabase → SQL editor:** run, in this order, each file in `supabase/migrations/`: `20261101000000_profiles.sql`, `20261101010000_sync.sql`, `20261102000000_delete_account.sql`, `20261102010000_parent_consent.sql`.
+5b. **Supabase → Edge Functions → Deploy new function** named `send-consent-email`, code = `supabase/functions/send-consent-email/index.ts`. Then **Edge Functions → Secrets:** `RESEND_API_KEY` (your Resend key, only here), `SITE_URL` (`https://your-domain`), `CONSENT_FROM` (`TIMELINER <hello@your-domain>`).
 6. **Supabase → Authentication → URL configuration:** Site URL = `https://your-domain`; add the Cloudflare preview URL as a redirect URL.
 7. **Cloudflare Pages → Settings → Environment variables (production + preview):** `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` (the *publishable* key only), then connect the custom domain.
 8. **Legal details:** your legal name / business name, a contact email and postal address for the privacy policy (the `[brackets]` in `docs/PRIVACY.md`).
