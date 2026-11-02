@@ -9,13 +9,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { expandEntries } from '@/core/entries/repeat';
 import { mascotMood } from '@/core/game/mascot';
+import { summarizeDay } from '@/core/game/review';
+import { tickLine } from '@/core/game/voice';
 import { addUnit, DAY, floorUnit, HOUR, MINUTE, type WeekStart } from '@/core/time/units';
 import { getScale, SCALES, zoomAfterPinch, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { saveEntry, setEntryDone, useCompletedIds, useEntries, useLayers } from '@/features/entries/data';
 import { Tick } from '@/features/game/Tick';
+import { TickBubble } from '@/features/game/TickBubble';
 import { useProgress } from '@/features/game/useProgress';
+import { useFocusedByEntry } from '@/features/focus/data';
 import { useInbox } from '@/features/inbox/data';
+import { useReviewedDays } from '@/features/review/data';
 import { useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { syncEntryNotifications } from '@/lib/notifications';
@@ -62,7 +67,26 @@ export function TimelineScreen() {
   const weekStart = addUnit(floorUnit(now, 'week', 1, ws), 'week', weekShift);
   // The title follows the week in the strip (its Thursday decides the month).
   const shown = weekShift ? addUnit(weekStart, 'day', 3) : now;
-  const doneToday = around(today, today + DAY).filter((e) => e.done && e.start >= today).length;
+  const todays = around(today, today + DAY).filter((e) => e.start >= today);
+  const doneToday = todays.filter((e) => e.done).length;
+  // Tick's line: what the day needs next (core/game/voice.ts).
+  const focused = useFocusedByEntry(now);
+  const reviewed = useReviewedDays();
+  const [hiddenLine, setHiddenLine] = useState<string | null>(null);
+  const day = summarizeDay(todays, focused, today, today + DAY, now);
+  const work = todays.filter((e) => e.kind === 'task' || e.kind === 'todo');
+  const next = work.find((e) => !e.done && (e.end ?? e.start) >= now);
+  const mood = mascotMood({ hour: new Date(now).getHours(), doneToday });
+  const line = tickLine({
+    hour: new Date(now).getHours(),
+    planned: day.total,
+    doneToday: day.done,
+    next: next?.title,
+    best: todays.find((e) => e.id === day.bestId)?.title,
+    dayClosed: reviewed.includes(today),
+    streakDays: run.days,
+    hadStreak: run.best > 0,
+  });
   const colorById = new Map(allLayers.map((l) => [l.id, l.color.fill]));
   const dotsFor = (day: number) => {
     const next = addUnit(day, 'day', 1);
@@ -102,6 +126,12 @@ export function TimelineScreen() {
   };
   const openAdd = (at: number, layerId: string) =>
     router.push({ pathname: '/entry/[id]', params: { id: 'new', at: String(at), layer: layerId, scale: scaleId } });
+  const planNext = () => openAdd(Math.ceil(Date.now() / (15 * MINUTE)) * 15 * MINUTE, layers[0]?.id ?? '');
+  const onTickAction = () => {
+    if (line.action === 'plan') planNext();
+    else if (line.action === 'review') router.push('/review');
+    else if (line.action === 'focus' && next) router.push({ pathname: '/focus/[id]', params: { id: next.seriesId ?? next.id } });
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: c.ground, paddingTop: insets.top + 8 }]}>
@@ -154,7 +184,7 @@ export function TimelineScreen() {
             style={[styles.hud, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
           >
             {/* On phones Tick lives on the timeline's trunk; the chip needs the room. */}
-            {!narrow && <Tick size={34} mood={mascotMood({ hour: new Date(now).getHours(), doneToday })} celebrate={progress.ready ? progress.xp : undefined} />}
+            {!narrow && <Tick size={34} mood={mood} celebrate={progress.ready ? progress.xp : undefined} />}
             <Text style={[styles.lv, { color: c.accentText }]}>LV {lv.level}</Text>
             <View style={[styles.xpCol, narrow && styles.xpColNarrow]}>
               <View style={[styles.xpTrack, { backgroundColor: c.chip }]}>
@@ -227,7 +257,7 @@ export function TimelineScreen() {
               <Text style={[styles.hintBody, { color: c.muted }]}>Tap the timeline anywhere, or start here.</Text>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => openAdd(Math.ceil(Date.now() / (15 * MINUTE)) * 15 * MINUTE, layers[0]?.id ?? '')}
+                onPress={planNext}
                 style={({ pressed }) => [styles.hintButton, { boxShadow: c.glow }, pressed && styles.pressed]}
               >
                 <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.hintFill}>
@@ -236,6 +266,11 @@ export function TimelineScreen() {
                 </LinearGradient>
               </Pressable>
             </View>
+          </View>
+        )}
+        {entries.length > 0 && calm !== 'on' && hiddenLine !== line.key && (
+          <View pointerEvents="box-none" style={styles.hintWrap}>
+            <TickBubble line={line} mood={mood} onAction={onTickAction} onDismiss={() => setHiddenLine(line.key)} />
           </View>
         )}
       </View>
@@ -288,7 +323,7 @@ const styles = StyleSheet.create({
   titleButton: { flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   chipText: { fontSize: 12, fontFamily: F.semi },
   trayWrap: { flex: 1, paddingHorizontal: 12 },
-  hintWrap: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center', paddingHorizontal: 24 },
+  hintWrap: { position: 'absolute', left: 0, right: 0, bottom: 16, alignItems: 'center', paddingHorizontal: 24 },
   hint: { width: 320, maxWidth: '100%', borderRadius: 22, padding: 16, gap: 6, alignItems: 'center' },
   hintTitle: { fontSize: 17, fontFamily: F.display },
   hintBody: { fontSize: 13.5, fontFamily: F.text, textAlign: 'center' },
