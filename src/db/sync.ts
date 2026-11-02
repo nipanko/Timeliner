@@ -6,12 +6,13 @@ import { syncOnce, type Change, type LocalSide, type RemoteSide, type SyncState 
 import { supabase } from '@/lib/supabase';
 
 import { getDb } from './client';
-import { dayLogs, entries, focusSessions, inbox, layers, milestones, settings } from './schema';
+import { completions, dayLogs, entries, focusSessions, inbox, layers, milestones, settings } from './schema';
 
 // Parents before children, so rows arriving together are written in a valid order.
 const TABLES = [
   { name: 'layers', table: layers, key: 'id' },
   { name: 'entries', table: entries, key: 'id' },
+  { name: 'completions', table: completions, key: 'id' },
   { name: 'focus_sessions', table: focusSessions, key: 'id' },
   { name: 'milestones', table: milestones, key: 'id' },
   { name: 'day_logs', table: dayLogs, key: 'day' },

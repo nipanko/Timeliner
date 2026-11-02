@@ -6,7 +6,7 @@ create sequence if not exists public.sync_seq;
 
 create table if not exists public.sync_rows (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  tbl text not null check (tbl in ('layers', 'entries', 'focus_sessions', 'day_logs', 'milestones', 'settings', 'inbox')),
+  tbl text not null check (tbl in ('layers', 'entries', 'completions', 'focus_sessions', 'day_logs', 'milestones', 'settings', 'inbox')),
   row_key text not null check (char_length(row_key) between 1 and 100),
   data jsonb not null check (pg_column_size(data) < 20000),
   updated_at bigint not null,
