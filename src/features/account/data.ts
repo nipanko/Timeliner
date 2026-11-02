@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 
+import { forgetSync } from '@/db/sync';
 import { supabase } from '@/lib/supabase';
 
 export type Profile = { id: string; nickname: string | null; birth_year: number; consent: 'not_needed' | 'pending' | 'granted' };
@@ -60,4 +61,16 @@ export async function createProfile(userId: string, birthYear: number) {
 
 export async function signOut() {
   await supabase?.auth.signOut();
+}
+
+/**
+ * Deletes the account on the server (sign-in, profile, synced copy). Data on this device stays;
+ * the user can keep using the app without an account.
+ */
+export async function deleteAccount(userId: string) {
+  if (!supabase) return;
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) throw error;
+  await forgetSync(userId);
+  await supabase.auth.signOut({ scope: 'local' }); // the server session is already gone
 }

@@ -85,6 +85,9 @@ const remote: RemoteSide = {
 const kv = Platform.OS === 'web' ? { getItem: async (k: string) => localStorage.getItem(k), setItem: async (k: string, v: string) => localStorage.setItem(k, v) } : Storage;
 const stateKey = (userId: string) => `timeliner-sync:${userId}`;
 
+/** Forget where this device was for an account (after it is deleted). */
+export const forgetSync = (userId: string) => (Platform.OS === 'web' ? Promise.resolve(localStorage.removeItem(stateKey(userId))) : Storage.removeItem(stateKey(userId)));
+
 let running: Promise<number> | null = null;
 
 /** One sync round for this account; overlapping calls share the same round. Resolves to when it finished. */

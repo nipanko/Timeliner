@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 import { usePalette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
-import { signOut, useProfile, useSession } from './data';
+import { deleteAccount, signOut, useProfile, useSession } from './data';
 import { runSync, useSyncStatus } from './sync';
 
 /** Settings › Account: sign in for backup / sync, or see who you're signed in as. Hidden if accounts aren't configured. */
@@ -15,6 +16,8 @@ export function AccountSection() {
   const session = useSession();
   const profile = useProfile(session);
   const sync = useSyncStatus();
+  const [deleting, setDeleting] = useState<'ask' | 'busy' | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   if (!supabase || session === undefined) return null;
 
   if (!session) {
@@ -66,6 +69,40 @@ export function AccountSection() {
           <Text style={[styles.signOutText, { color: c.ink }]}>Sign out</Text>
         </Pressable>
       </View>
+      {deleting ? (
+        <View style={[styles.danger, { borderColor: c.danger }]}>
+          <Text style={[styles.sub, { color: c.ink }]}>
+            This deletes your account and the copy on our server, for good. Everything on this device stays, and you can keep using TIMELINER without an account.
+          </Text>
+          {deleteError && <Text style={[styles.sub, { color: c.danger }]}>{deleteError}</Text>}
+          <View style={styles.buttons}>
+            <Pressable accessibilityRole="button" onPress={() => setDeleting(null)} style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: c.chip }, pressed && styles.pressed]}>
+              <Text style={[styles.signOutText, { color: c.ink }]}>Keep my account</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={deleting === 'busy'}
+              onPress={async () => {
+                setDeleting('busy');
+                setDeleteError(null);
+                try {
+                  await deleteAccount(session.user.id);
+                } catch (e) {
+                  setDeleteError(e instanceof Error ? e.message : 'Could not delete the account. Try again.');
+                  setDeleting('ask');
+                }
+              }}
+              style={({ pressed }) => [styles.signOut, styles.grow, { backgroundColor: c.danger }, pressed && styles.pressed]}
+            >
+              <Text style={[styles.signOutText, { color: c.panel }]}>{deleting === 'busy' ? 'Deleting…' : 'Delete for good'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable accessibilityRole="button" onPress={() => setDeleting('ask')} style={styles.deleteLink}>
+          <Text style={[styles.deleteText, { color: c.danger }]}>Delete account</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -80,5 +117,8 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', gap: 8 },
   signOut: { height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { fontSize: 14, fontFamily: F.bold },
+  danger: { borderWidth: 2, borderRadius: 14, padding: 10, gap: 8 },
+  deleteLink: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12 },
+  deleteText: { fontSize: 13, fontFamily: F.bold },
   pressed: { transform: [{ scale: 0.97 }] },
 });
