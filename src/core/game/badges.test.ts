@@ -14,10 +14,10 @@ describe('badges', () => {
     task(30, 10),
     task(1, 0, { granularity: 'month', done: false, createdAt: at(26, 12), end: at(31, 0) }), // set on a Monday
   ];
-  const stats = badgeStats(entries, at(30, 20));
+  const stats = { ...badgeStats(entries, at(30, 20)), questDays: 0 };
 
   it('measures streaks, comebacks, focus and planning', () => {
-    expect(stats).toEqual({ done: 4, lateTasks: 0, bestStreak: 3, comebacks: 1, focusedHours: 1, calibrated: 1, earlyTasks: 1, freshStarts: 1 });
+    expect(stats).toEqual({ questDays: 0, done: 4, lateTasks: 0, bestStreak: 3, comebacks: 1, focusedHours: 1, calibrated: 1, earlyTasks: 1, freshStarts: 1 });
   });
 
   it('earns badges and shows progress toward the rest', () => {
@@ -28,7 +28,7 @@ describe('badges', () => {
     expect(list['focus-10'].progress).toBeCloseTo(0.1);
     expect(list.first.earned).toBe(true);
     expect(list['level-5'].progress).toBeCloseTo(0.4);
-    expect(badges(badgeStats([], at(30, 20)), 0).every((b) => !b.earned && b.progress === 0)).toBe(true);
+    expect(badges({ ...badgeStats([], at(30, 20)), questDays: 0 }, 0).every((b) => !b.earned && b.progress === 0)).toBe(true);
   });
 
   it('numbers the deck in order and ranks rarer cards later', () => {

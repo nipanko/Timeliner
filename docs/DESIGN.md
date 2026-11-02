@@ -9,7 +9,7 @@
 > - **Collectible cards (v2 slice 2):** the badges became a numbered deck of 17 (`core/game/badges.ts`: common → rare → epic → legendary, earned only by real effort: first task, early / late tasks, streaks, focus hours, honest planning, tasks done, levels 5 and 10). Each card is Tick in an outfit (sprout, sun, moon, flame, star, flag, bolt, headphones, clock, trophy, crown) on its own candy colour with an ink outline and a shine sweep (`CollectCard`). Locked cards are dashed with "?", the rule and a progress bar. Journey → Cards shows the grid and the closest next card. A new card plays the **reveal** (`CardReveal`): blue screen, spinning light rays, confetti, the card floating in, "ADD TO COLLECTION" / "See all cards".
 > - **Clock:** a setting, 12-hour with AM/PM ("9 PM | 00", "9:05 PM") or 24-hour ("21 | 00", "21:05"), defaulting to the device's habit; in Settings → Timeline and the View sheet.
 > - Inbox: one tap deletes, with a 5-second Undo bar (no tap-twice confirm).
-> - Coming next: daily quests.
+> - **Daily quests:** a slim QUESTS strip under the Timeline header (three pips, the next quest, "All done · +20 XP"); tap for the sheet with each quest's progress and the reward. Three a day from a pool of six, picked from the date.
 
 **v0.3 notes (31 Oct – 1 Nov), kept as history:**
 

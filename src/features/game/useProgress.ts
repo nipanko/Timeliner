@@ -6,13 +6,15 @@ import { expandEntries } from '@/core/entries/repeat';
 import { badges, badgeStats } from '@/core/game/badges';
 import { focusedMs } from '@/core/game/focus';
 import { streak } from '@/core/game/streaks';
+import { dayFacts, dayQuests, QUEST_BONUS_XP, questDaysDone } from '@/core/game/quests';
 import { levelFor, MILESTONE_XP, REVIEW_XP, totalXp } from '@/core/game/xp';
+import { floorUnit } from '@/core/time/units';
 import { getDb } from '@/db/client';
 import { completions, dayLogs, entries, focusSessions, milestones } from '@/db/schema';
 import { useNow } from '@/hooks/useNow';
 
 /**
- * Everything the game shows: XP, level, streak, badges and focus. All derived from saved data.
+ * Everything the game shows: XP, level, streak, cards, today's quests and focus. All derived from saved data.
  * `ready` is false until every table has loaded once, so nothing celebrates the initial load.
  */
 export function useProgress() {
@@ -44,8 +46,11 @@ export function useProgress() {
       // shortcut: focus time is kept per series, so only one-off entries earn the focus bonus; split sessions by occurrence when it matters.
       focusedMs: x.seriesId ? undefined : focused.get(x.id),
     }));
-    const xp = totalXp(scored) + REVIEW_XP * d.data.length + MILESTONE_XP * m.data.filter((x) => x.doneAt !== null).length;
-    const stats = badgeStats(scored, now);
+    const closed = d.data.map((x) => x.day);
+    const questDays = questDaysDone(scored, s.data, closed, now);
+    const today = floorUnit(now, 'day');
+    const xp = totalXp(scored) + REVIEW_XP * d.data.length + MILESTONE_XP * m.data.filter((x) => x.doneAt !== null).length + QUEST_BONUS_XP * questDays;
+    const stats = { ...badgeStats(scored, now), questDays };
     return {
       ready: !!(e.updatedAt && s.updatedAt && d.updatedAt && m.updatedAt && c.updatedAt),
       xp,
@@ -53,6 +58,7 @@ export function useProgress() {
       streak: streak(scored.filter((x) => x.done && (x.kind === 'task' || x.kind === 'todo')).map((x) => x.start), now),
       badges: badges(stats, levelFor(xp).level),
       focusedHours: stats.focusedHours,
+      quests: dayQuests(today, dayFacts(today, scored, s.data, closed, now)),
     };
   }, [e.data, e.updatedAt, s.data, s.updatedAt, d.data, d.updatedAt, m.data, m.updatedAt, c.data, c.updatedAt, now]);
 }

@@ -20,6 +20,7 @@ const ART = {
   clock: ['M84 2a15 15 0 1 1 0 30a15 15 0 1 1 0-30z M84 8 V17 L90 21', '#FFF7F0'],
   trophy: ['M72 4h24v9c0 8-5 13-12 13s-12-5-12-13z M80 26h8v6h5v6H75v-6h5z', '#FFD15C'],
   crown: ['M28 34 L32 14 L43 24 L50 8 L57 24 L68 14 L72 34Z', '#FFD15C'],
+  chest: ['M70 16 h28 v18 h-28z M70 16 c0-8 6-12 14-12 s14 4 14 12z M81 20 h6 v7 h-6z', '#FFD15C'],
 } as const;
 
 const LOOK: Record<string, [keyof typeof ART, string]> = {
@@ -34,6 +35,7 @@ const LOOK: Record<string, [keyof typeof ART, string]> = {
   'focus-10': ['phones', '#5AA9FF'],
   honest: ['clock', '#5EE6C8'],
   'level-5': ['trophy', '#FFB648'],
+  'quests-7': ['chest', '#E2B8FF'],
   'streak-14': ['flame', '#9B7BFF'],
   'done-100': ['bolt', '#4C7BFF'],
   'focus-50': ['phones', '#FF7AB6'],

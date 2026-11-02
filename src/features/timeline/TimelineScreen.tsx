@@ -16,6 +16,7 @@ import { DAY, floorUnit, MINUTE, type WeekStart } from '@/core/time/units';
 import { getScale, zoomAfterPinch, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { saveEntry, setEntryDone, useCompletedIds, useEntries, useLayers } from '@/features/entries/data';
+import { QuestSheet, QuestStrip } from '@/features/game/Quests';
 import { TickBubble } from '@/features/game/TickBubble';
 import { useProgress } from '@/features/game/useProgress';
 import { useFocusedByEntry } from '@/features/focus/data';
@@ -90,6 +91,7 @@ export function TimelineScreen() {
   const [jump, setJump] = useState<JumpMode | null>(null);
   const [jumpAt, setJumpAt] = useState(now);
   const [viewOpen, setViewOpen] = useState(false);
+  const [questsOpen, setQuestsOpen] = useState(false);
   const jumpToTime = (t: number) => {
     setJump(null);
     const live = Math.abs(t - Date.now()) < MINUTE;
@@ -159,6 +161,10 @@ export function TimelineScreen() {
         </View>
       </View>
 
+      <View style={styles.tickBar}>
+        <QuestStrip quests={progress.quests} onOpen={() => setQuestsOpen(true)} />
+      </View>
+
       {entries.length > 0 && calm !== 'on' && hiddenLine !== line.key && (
         <View style={styles.tickBar}>
           <TickBubble line={line} mood={mood} celebrate={progress.ready ? progress.xp : undefined} onAction={onTickAction} onDismiss={() => setHiddenLine(line.key)} />
@@ -214,6 +220,7 @@ export function TimelineScreen() {
         )}
       </View>
 
+      <QuestSheet open={questsOpen} quests={progress.quests} onClose={() => setQuestsOpen(false)} />
       <ViewSheet open={viewOpen} layers={allLayers} direction={direction} scaleId={scaleId} h24={h24} onScale={setScaleId} onClose={() => setViewOpen(false)} />
       <JumpSheet mode={jump} day={jump === 'time' ? floorUnit(jumpAt, 'day') : viewDay} at={jumpAt} today={today} weekStart={ws} h24={h24} sound={calm !== 'on'} onJump={jumpToTime} onClose={() => setJump(null)} />
     </View>
