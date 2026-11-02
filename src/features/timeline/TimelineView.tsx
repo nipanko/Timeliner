@@ -118,6 +118,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
   const [showNowButton, setShowNowButton] = useState(() => !following.get());
   const nowTime = useSharedValue(origin);
   const dragStart = useSharedValue(0);
+  const panned = useSharedValue(false); // the release after a drag must not count as a tap on empty space
   const relayoutPending = useSharedValue(false);
 
   const moveWindow = (t: number) => {
@@ -129,6 +130,11 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
     let t = Date.now();
     if (reduceMotion) t -= t % 1000; // step once a second instead of flowing
     nowTime.set(t);
+    // Never let the camera hold a broken time: every label is drawn from it. Back to now instead.
+    if (!Number.isFinite(anchorTime.get())) {
+      following.set(true);
+      anchorTime.set(t);
+    }
     if (following.get()) anchorTime.set(t);
     if (Math.abs(anchorTime.get() - center) <= span / 2) relayoutPending.set(false);
     else if (!relayoutPending.get()) {
@@ -146,7 +152,11 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
   );
 
   const pan = usePanGesture({
+    onBegin: () => {
+      panned.set(false);
+    },
     onActivate: () => {
+      panned.set(true);
       cancelAnimation(anchorTime);
       following.set(false);
       dragStart.set(anchorTime.get());
@@ -156,7 +166,9 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
       anchorTime.set(dragStart.get() - (sign * (vertical ? e.translationY : e.translationX) * span) / L);
     },
     onDeactivate: (e) => {
-      anchorTime.set(withDecay({ velocity: (-sign * (vertical ? e.velocityY : e.velocityX) * span) / L }));
+      // A release can report no speed or an infinite one (a zero-length frame); fling only on a real number, capped at 4 screens/s.
+      const v = (-sign * (vertical ? e.velocityY : e.velocityX) * span) / L;
+      if (Number.isFinite(v) && v !== 0) anchorTime.set(withDecay({ velocity: Math.max(-4 * span, Math.min(4 * span, v)) }));
     },
   });
 
@@ -233,6 +245,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
 
   // A tap on empty space glides that moment under the pointer, ready for Add.
   const tapEmpty = (x: number, y: number) => {
+    if (panned.get()) return;
     const t = posToTime((vertical ? y : x) / L, { anchorTime: anchorTime.get(), anchorFrac: ANCHOR, span, direction });
     cancelAnimation(anchorTime);
     following.set(false);
@@ -505,7 +518,7 @@ function PointerHud({ c, vertical, at, mid, anchorTime, live, scale, weekStart, 
   useAnimatedReaction(
     () => Math.floor(anchorTime.get() / res),
     (k, before) => {
-      if (k !== before) scheduleOnRN(setRaw, k * res);
+      if (k !== before && Number.isFinite(k)) scheduleOnRN(setRaw, k * res);
     },
     [res],
   );
