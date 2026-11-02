@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Extrapolation, FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Halftone } from './Halftone';
 import { usePalette } from './theme';
 import { F } from './type';
 
@@ -30,6 +31,7 @@ export function ScrollScreen({ title, subtitle, children, footer }: Props) {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.ground }]}>
+      <Halftone color={c.dots} />
       <Animated.ScrollView
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -60,8 +62,8 @@ const styles = StyleSheet.create({
   // On wide screens (web, tablets) the column stays readable and centred.
   content: { paddingHorizontal: 16, paddingBottom: 28, gap: 14, width: '100%', maxWidth: 720, alignSelf: 'center' },
   titleBlock: { transformOrigin: 'left center', gap: 2, marginBottom: 4 },
-  title: { fontSize: 32, fontFamily: F.display, letterSpacing: -0.8 },
+  title: { fontSize: 34, fontFamily: F.display },
   subtitle: { fontSize: 13, fontFamily: F.semi },
   bar: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 10 },
-  barTitle: { fontSize: 16, fontFamily: F.bold, paddingTop: 10 },
+  barTitle: { fontSize: 17, fontFamily: F.display, paddingTop: 10 },
 });

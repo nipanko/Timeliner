@@ -34,7 +34,7 @@ Stack is fixed in `PLAN.md`. This file says how the pieces fit. UI look: `DESIGN
 src/
   app/                        Expo Router: every file is a screen
     _layout.tsx               root stack + providers (db, fonts, theme preference) + celebration overlay
-    (tabs)/_layout.tsx        floating tab bar + add button (headless expo-router/ui tabs)
+    (tabs)/_layout.tsx        floating tab bar (headless expo-router/ui tabs); adding lives on the timeline's pointer
     (tabs)/index.tsx          Timeline (home)
     (tabs)/journey.tsx        goals with milestones, badges
     (tabs)/review.tsx         end-of-day run summary
@@ -47,7 +47,7 @@ src/
     timeline/scales.ts        zoom ladder (table in §4.2)
     timeline/viewport.ts      time ↔ position, the 4 directions
     timeline/ticks.ts         ticks + labels for a visible range
-    timeline/layout.ts        entries → positioned items: lanes, overlaps, bands, compact
+    timeline/spine.ts         v2 layout: card sides, stacking, pointer snap, zoomed-out bubbles
     entries/status.ts         planned / active / done / skipped, progress
     game/xp.ts                XP per event
     game/levels.ts            level curve
@@ -107,7 +107,7 @@ There is no separate day view or week view. There is one infinite time axis, and
 type Direction = 'down' | 'up' | 'right' | 'left';
 type Viewport = {
   anchorTime: number;   // the time shown at anchorFrac
-  anchorFrac: number;   // where "now" sits along the axis, 0..1 (default 0.3)
+  anchorFrac: number;   // where the pointer sits along the axis, 0..1 (0.42)
   span: number;         // ms visible along the main axis
   direction: Direction;
   follow: boolean;      // true = anchorTime tracks now every frame
@@ -117,8 +117,9 @@ p(t) = anchorFrac + (t - anchorTime) / span
 // down/right use p; up/left use 1 - p; down/up map to y, right/left to x
 ```
 
-- **follow = true:** `anchorTime = now` every frame, so the timeline flows past a fixed now-line like a clock.
-- Dragging sets `follow = false`; the "Now" button sets it back.
+- **follow = true:** `anchorTime = now` every frame, so the timeline flows past the fixed pointer like a clock.
+- Dragging sets `follow = false`; the "Back to now" button sets it back.
+- **The pointer (v2, 2 Nov):** a fixed line at `anchorFrac` reads the time under it, snapped to the zoom (`snapTo`: nearest slot, or the next one while following now). **Add** creates an entry exactly there; tapping empty space glides that moment under the pointer; tapping the time opens wheels to dial it in. The screen title shows the pointer's day.
 
 ### 4.2 Zoom ladder (semantic zoom)
 
@@ -126,7 +127,7 @@ p(t) = anchorFrac + (t - anchorTime) / span
 |---|---|---|---|---|---|
 | Sec | 40 s | 1 s | 5 s ("2:32:05 PM") | 1 s | 1 min |
 | Min | 30 min | 1 min | 5 min ("2:35 PM") | 1 min | 25 min |
-| Hour | 9 h | 15 min | 1 h ("3 PM") | 15 min | 25 min |
+| Hour | 9 h | 15 min | 1 h ("15 \| 00") | 5 min | 25 min |
 | Day | 4 days | 6 h | day ("Fri 30") | 1 h | 1 h |
 | Week | 6 weeks | day | week ("Nov 2") | day | 1 day |
 | Month | 8 months | week | month ("Nov") | day | 1 week |
@@ -134,14 +135,14 @@ p(t) = anchorFrac + (t - anchorTime) / span
 
 Chips jump between rungs; pinch changes `span` smoothly, and the tick rung switches when major ticks get closer than ~48 px.
 
-How an entry is drawn depends on its length on screen (`timeline/layout.ts`):
-- **Band:** longer than 1.2 × the visible span → thin strip on the lane edge, with title and % in the lane header (a month goal while looking at one hour).
-- **Compact:** shorter than ~24 px → colored mark, no text (a day's tasks seen from year zoom).
-- **Card:** everything else. Points (todo, note, reminder) are fixed-size pills.
-- **Overlaps** in one lane split into sub-columns (greedy interval partitioning by start time).
+How entries are drawn (v2, `timeline/spine.ts`; no time blocks):
+- **Cards** (Sec, Min, Hour): a fixed-size card per entry, wired to the spine at its start; a thin bar beside the spine shows how long it lasts. Cards alternate sides within their day (`spineSides`, stable while scrolling); crowded ones slide along (`stackCards`) and keep an elbow wire to their true time.
+- **Compact** (Day): the same cards, one line high.
+- **Bubbles** (Week, Month, Year): one bubble per day, week or quarter with the count, in its most common layer's colour; tap = zoom into it (`bucketize`, `BUCKET_ZOOM`).
+- The ruler beside the spine reads in two halves, "h | m" (`rulerLabel`), on a 24-hour clock.
 
-### 4.3 Layers = lanes
-Each layer is a lane running beside the time axis, like the git branches in reference image 2. The user shows, hides and reorders layers. With one layer visible, it looks like the classic centered spine of reference images 1 and 4.
+### 4.3 Layers = colours
+Since v2 (2 Nov) layers are no longer lanes: a card wears its layer's colour and icon, and the View sheet shows or hides layers. (Before v2 each layer was a lane beside the time axis.)
 
 ### 4.4 Directions
 Down (phone default), up, right (landscape, tablet, web) and left are one projection: swap axes and/or flip. A radial "clock" view (24 h dial) can come later as one more projection, with no change to data or game code.

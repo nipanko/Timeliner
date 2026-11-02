@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   ring: { width: 68, height: 68, borderRadius: 34, padding: 3 },
   avatar: { flex: 1, borderRadius: 31, alignItems: 'center', justifyContent: 'center' },
   overline: { fontSize: 10.5, fontFamily: F.bold, letterSpacing: 1.2 },
-  level: { fontSize: 26, fontFamily: F.display, letterSpacing: -0.5 },
+  level: { fontSize: 26, fontFamily: F.display },
   small: { fontSize: 13, fontFamily: F.text },
   track: { height: 8, borderRadius: 5, overflow: 'hidden' },
   stats: { flexDirection: 'row', gap: 8 },

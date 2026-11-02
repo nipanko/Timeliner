@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   newGoal: { height: 52, borderRadius: 16, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   goal: { borderRadius: 22, padding: 16, gap: 10 },
   goalWhen: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1 },
-  goalTitle: { fontSize: 20, fontFamily: F.display, letterSpacing: -0.3 },
+  goalTitle: { fontSize: 20, fontFamily: F.display },
   track: { height: 8, borderRadius: 5, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 5 },
   branch: { borderLeftWidth: 3, marginLeft: 10, paddingLeft: 4, gap: 2 },

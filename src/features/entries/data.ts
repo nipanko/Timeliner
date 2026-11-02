@@ -4,7 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { useMemo } from 'react';
 
 import type { EntryKind, Granularity } from '@/core/entries/timing';
-import type { TimelineEntry } from '@/core/timeline/layout';
+import type { TimelineEntry } from '@/core/timeline/spine';
 import { getDb } from '@/db/client';
 import { completions, entries, focusSessions, layers, milestones } from '@/db/schema';
 import { LAYER_COLORS, type IconName, type LayerColor, type LayerColorKey } from '@/ui/theme';

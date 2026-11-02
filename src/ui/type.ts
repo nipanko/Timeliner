@@ -1,19 +1,19 @@
 // Per-weight paths: importing the package root would ship every weight (≈7 MB on the web).
-import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
-import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
-import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
-import { Lexend_600SemiBold } from '@expo-google-fonts/lexend/600SemiBold';
-import { Lexend_700Bold } from '@expo-google-fonts/lexend/700Bold';
+import { LilitaOne_400Regular } from '@expo-google-fonts/lilita-one/400Regular';
+import { Nunito_600SemiBold } from '@expo-google-fonts/nunito/600SemiBold';
+import { Nunito_700Bold } from '@expo-google-fonts/nunito/700Bold';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
 
 /** Font files loaded once by the root layout. */
-export const FONT_FILES = { Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Lexend_600SemiBold, Lexend_700Bold };
+export const FONT_FILES = { LilitaOne_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold };
 
 // Use these families instead of fontWeight: Android picks custom fonts by family name, not weight.
-// Lexend (friendly, made for reading ease, clear digits) for titles and numbers; Inter for everything you read.
+// Lilita One (chunky, rounded, arcade) for titles and numbers; Nunito (round, easy to read) for everything else.
 export const F = {
-  text: 'Inter_500Medium',
-  semi: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
-  display: 'Lexend_700Bold',
-  displaySemi: 'Lexend_600SemiBold',
+  text: 'Nunito_600SemiBold',
+  semi: 'Nunito_700Bold',
+  bold: 'Nunito_800ExtraBold',
+  display: 'LilitaOne_400Regular',
+  // Lilita One has one weight; smaller numbers (calendar days, wheels) use it too.
+  displaySemi: 'LilitaOne_400Regular',
 } as const;

@@ -1,6 +1,5 @@
 import { HOUR } from '../time/units';
-import { getScale } from './scales';
-import { hasLabel, labelEvery, tickLabel, ticks } from './ticks';
+import { clock24, hasLabel, labelEvery, pointerLabel, rulerLabel, ticks } from './ticks';
 
 // America/New_York (jest.global-setup.js): DST starts Mar 8 and ends Nov 1, 2026.
 const local = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
@@ -53,17 +52,26 @@ describe('label thinning', () => {
   });
 });
 
-describe('tickLabel', () => {
-  const t = local(2026, 10, 30, 15);
-  it('formats for the zoom level and locale', () => {
-    expect(tickLabel(t, getScale('hour'), 'en-US')).toBe('3 PM');
-    expect(tickLabel(t, getScale('week'), 'en-US')).toBe('Oct 30');
-    expect(tickLabel(t, getScale('day'), 'en-IN')).toBe('Fri 30');
-    expect(tickLabel(t, getScale('year'), 'en-US')).toBe('2026');
+describe('ruler and pointer labels', () => {
+  const t = local(2026, 10, 30, 9, 5);
+  it('reads hours | minutes on a 24-hour clock when zoomed in', () => {
+    expect(clock24(local(2026, 10, 30, 21, 5))).toBe('21:05');
+    expect(clock24(t + 7000, true)).toBe('09:05:07');
+    expect(rulerLabel(local(2026, 10, 30, 21), 'hour')).toEqual(['21', '00']);
+    expect(rulerLabel(t + 30_000, 'sec')).toEqual(['09:05', '30']);
   });
 
-  it('adds the year to January at month zoom', () => {
-    expect(tickLabel(local(2027, 1, 1), getScale('month'), 'en-US')).toBe('Jan 2027');
-    expect(tickLabel(t, getScale('month'), 'en-US')).toBe('Oct');
+  it('switches to days, months and years further out', () => {
+    expect(rulerLabel(t, 'day', 'en-US')).toEqual(['FRI', '30']);
+    expect(rulerLabel(t, 'week', 'en-US')).toEqual(['OCT', '30']);
+    expect(rulerLabel(t, 'month', 'en-US')).toEqual(['OCT', '2026']);
+    expect(rulerLabel(t, 'year')).toEqual(['2026', '']);
+  });
+
+  it('gives the pointer a time, a day or a month', () => {
+    expect(pointerLabel(t, 'hour')).toBe('09:05');
+    expect(pointerLabel(t, 'week', 'en-US')).toBe('Fri 30');
+    expect(pointerLabel(t, 'year', 'en-US')).toBe('Oct 2026');
   });
 });
+

@@ -1,4 +1,14 @@
-# TIMELINER — UI design v0.3 ("pro")
+# TIMELINER — UI design v2 ("arcade")
+
+> **v2 (2 Nov) replaces the "pro" look.** Built from Nipanko's references on the design canvas (collectible card grid, centre-spine timelines, an "h | m" ruler, a bold arcade game menu). Tokens in `src/ui/theme.ts`:
+> - Dark: night indigo ground `#121228`, panel `#1E1E3F`, ink `#F4F1FF`, muted `#A39FCB`, lime accent `#C8F25A`, candy `gold` `#FFD15C` (pointer, rewards) and `pop` grape `#8B5CF6` (day markers). Light: cream ground `#FFF3E3`, white panels, ink `#1A1A2E`.
+> - **Comic edges:** everything raised has a thick ink outline and a hard drop shadow, both from one `boxShadow` token (`raised`, `raisedSm`, `selected`: a spread ring plus an offset copy). Cards add a 3 px border in their layer colour (open) or ink (done, filled with the layer colour). Halftone dots (`Halftone`, token `dots`) cover the ground of every screen.
+> - Type: **Lilita One** (chunky, rounded, arcade) for titles and numbers, **Nunito** 600–800 for everything you read; both OFL, bundled. `F.display` / `F.text|semi|bold` in `src/ui/type.ts`; no negative tracking on Lilita.
+> - **Timeline v2:** title = the day under the pointer (TODAY / TOMORROW / weekday, tap = calendar) · level ring + streak flame · Inbox. Tick's line sits in a slim bar. Then one spine down the middle with a two-half ruler ("21 | 00"), lit lime→mint behind now; cards on both sides; a purple day pill at midnight; Tick on the spine at now with a live NOW clock pill. **The pointer** is a fixed glowing line with the exact time (gold; lime with "NOW" while following the clock), the zoom chip on its left (opens View: zoom, layers, direction) and **Add** on its right. No add button in the tab bar any more.
+> - Game cues on cards: open cards show their XP ("13:20 · +15 XP"), done cards "Done · +15 XP", next up pulses, an active task breathes, a missed task is a dashed grey card ("Missed, no penalty").
+> - Coming next (v2 slice 2): collectible cards for milestones, streaks and levels, the card reveal moment, daily quests.
+
+**v0.3 notes (31 Oct – 1 Nov), kept as history:**
 
 > **v0.3 (31 Oct) replaces the clay look in the app.** Inspired by pill timelines, week strips, watch complications and clean card UIs: dark near-black with hairline edges and a glowing lime accent (gamers / tech), light warm paper with white cards. Tokens live in `src/ui/theme.ts`:
 > - Dark: ground `#0D0E12`, panel `#17181E`, ink `#F2F3F5`, muted `#9A9CA6`, accent lime `#C8F25A` (dark text on it), gradient lime → mint `#5EE6C8`, glow `0 0 14px` lime.

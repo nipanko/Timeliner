@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   tile: { flexGrow: 1, flexBasis: '45%', borderRadius: 20, padding: 14, gap: 6 },
   tileTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tileLabel: { fontSize: 12, fontFamily: F.semi },
-  tileValue: { fontSize: 28, fontFamily: F.display, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  tileValue: { fontSize: 28, fontFamily: F.display, fontVariant: ['tabular-nums'] },
   card: { borderRadius: 22, padding: 16, gap: 12 },
   cardLabel: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1.1 },
   path: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
+import { SCALES, type ScaleId } from '@/core/timeline/scales';
 import type { Direction } from '@/core/timeline/viewport';
 import { setLayerVisible, type Layer } from '@/features/entries/data';
 import { setSetting } from '@/features/settings/data';
@@ -16,10 +17,12 @@ const DIRECTIONS: [Direction, IconName, string][] = [
   ['left', 'arrow-back', 'Left'],
 ];
 
-type Props = { open: boolean; layers: readonly Layer[]; direction: Direction; onClose: () => void };
+const ZOOMS: Record<ScaleId, string> = { sec: 'Sec', min: 'Min', hour: 'Hour', day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 
-/** Timeline view options in one place: which layers show, and which way time runs. */
-export function ViewSheet({ open, layers, direction, onClose }: Props) {
+type Props = { open: boolean; layers: readonly Layer[]; direction: Direction; scaleId: ScaleId; onScale: (id: ScaleId) => void; onClose: () => void };
+
+/** Timeline view options in one place: zoom, which layers show, and which way time runs. */
+export function ViewSheet({ open, layers, direction, scaleId, onScale, onClose }: Props) {
   const c = usePalette();
   const visible = layers.filter((l) => l.visible).length;
   const toggle = (l: Layer) => {
@@ -32,6 +35,25 @@ export function ViewSheet({ open, layers, direction, onClose }: Props) {
         <Pressable onPress={() => {}} accessible={false}>
           <Animated.View entering={ZoomIn.springify().damping(16)} style={[styles.card, { backgroundColor: c.panel, boxShadow: c.raised }]}>
             <Text style={[styles.title, { color: c.ink }]} accessibilityRole="header">View</Text>
+
+            <Text style={[styles.section, { color: c.muted }]}>ZOOM · PINCH WORKS TOO</Text>
+            <View style={[styles.segmented, { backgroundColor: c.chip }]}>
+              {SCALES.map((s) => {
+                const on = s.id === scaleId;
+                return (
+                  <Pressable
+                    key={s.id}
+                    accessibilityRole="radio"
+                    aria-checked={on}
+                    accessibilityLabel={`Zoom to ${ZOOMS[s.id]}`}
+                    onPress={() => onScale(s.id)}
+                    style={[styles.zoom, on && { backgroundColor: c.accent, boxShadow: c.selected }]}
+                  >
+                    <Text style={[styles.optionText, { color: on ? c.accentInk : c.ink }]}>{ZOOMS[s.id]}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
             <Text style={[styles.section, { color: c.muted }]}>LAYERS</Text>
             <View style={styles.list}>
@@ -98,7 +120,7 @@ export function ViewSheet({ open, layers, direction, onClose }: Props) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   card: { width: 340, maxWidth: '100%', borderRadius: 26, padding: 16, gap: 10 },
-  title: { fontSize: 18, fontFamily: F.display },
+  title: { fontSize: 22, fontFamily: F.display },
   section: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1.1, marginTop: 4 },
   list: { gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, paddingHorizontal: 8, borderRadius: 14 },
@@ -106,6 +128,7 @@ const styles = StyleSheet.create({
   name: { flex: 1, fontSize: 15, fontFamily: F.semi },
   segmented: { flexDirection: 'row', borderRadius: 14, padding: 3, gap: 2 },
   option: { flex: 1, height: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  zoom: { flex: 1, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   optionText: { fontSize: 11, fontFamily: F.bold },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
   link: { paddingVertical: 10 },

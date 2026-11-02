@@ -4,18 +4,18 @@ import { useColorScheme } from 'react-native';
 
 import type { EntryKind } from '@/core/entries/timing';
 
-// Tokens from docs/DESIGN.md §1 (v0.3 "pro"): dark near-black with hairline edges and a lime accent
-// that glows; light is warm paper with white cards. Edges are drawn as inset 1px shadows, so one
-// boxShadow token gives both the border and the elevation.
+// Tokens from docs/DESIGN.md §1 (v2 "arcade"): night indigo with candy colours; light is warm cream.
+// Everything raised gets a thick ink outline and a hard drop shadow, drawn by one boxShadow token
+// (a spread ring for the outline, an offset copy for the shadow), so no component needs its own border.
 const dark = {
-  ground: '#0D0E12',
-  panel: '#17181E',
-  tray: '#111217',
-  ink: '#F2F3F5',
-  muted: '#9A9CA6',
-  line: 'rgba(255,255,255,0.06)',
-  lineStrong: 'rgba(255,255,255,0.18)',
-  chip: '#22242B',
+  ground: '#121228',
+  panel: '#1E1E3F',
+  tray: '#17173A',
+  ink: '#F4F1FF',
+  muted: '#A39FCB',
+  line: 'rgba(255,255,255,0.07)',
+  lineStrong: 'rgba(255,255,255,0.2)',
+  chip: '#2A2A52',
   /** Accent as a fill (buttons, selected chips); text on it uses `accentInk`. */
   accent: '#C8F25A',
   accentInk: '#11160A',
@@ -24,38 +24,47 @@ const dark = {
   /** Two stops for XP bars, the add button and glows. */
   gradient: ['#C8F25A', '#5EE6C8'] as readonly [string, string],
   danger: '#FF8A80',
-  veil: 'rgba(13,14,18,0.55)',
-  laneAlt: 'rgba(255,255,255,0.02)',
-  raised: 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 10px 30px rgba(0,0,0,0.35)',
-  raisedSm: 'inset 0 0 0 1px rgba(255,255,255,0.07), 0 2px 8px rgba(0,0,0,0.3)',
+  veil: 'rgba(18,18,40,0.6)',
+  /** The comic outline around raised things, and the ink on gold and candy fills. */
+  edge: '#07070F',
+  /** Candy fills: gold for the pointer and rewards, pop (grape) for day markers. */
+  gold: '#FFD15C',
+  pop: '#8B5CF6',
+  /** Halftone dots on the ground. */
+  dots: 'rgba(255,255,255,0.06)',
+  raised: '0 0 0 3px #07070F, 0 6px 0 3px #07070F',
+  raisedSm: '0 0 0 2.5px #07070F, 0 4px 0 2.5px #07070F',
   pressedIn: 'inset 0 0 0 1px rgba(255,255,255,0.05)',
-  selected: '0 0 0 1px rgba(200,242,90,0.55), 0 6px 18px rgba(200,242,90,0.28)',
+  selected: '0 0 0 2.5px #07070F, 0 3px 0 2.5px #07070F',
   glow: '0 0 14px rgba(200,242,90,0.55)',
 };
 
 export type Palette = typeof dark;
 
 const light: Palette = {
-  ground: '#ECE9E3',
+  ground: '#FFF3E3',
   panel: '#FFFFFF',
-  tray: '#F7F5F1',
-  ink: '#15161A',
-  muted: '#62656F',
-  line: 'rgba(0,0,0,0.06)',
-  lineStrong: 'rgba(0,0,0,0.2)',
-  chip: '#F0EEEA',
+  tray: '#FFF8EE',
+  ink: '#1A1A2E',
+  muted: '#5F5A78',
+  line: 'rgba(26,26,46,0.08)',
+  lineStrong: 'rgba(26,26,46,0.25)',
+  chip: '#F6EBDD',
   accent: '#C6EE3E',
   accentInk: '#141A05',
   // Lime is too light to read on paper, so lines and text use a deep lime (5:1 on white).
   accentText: '#4C7608',
   gradient: ['#B7E33A', '#3FBF9E'],
   danger: '#B42318',
-  veil: 'rgba(247,245,241,0.6)',
-  laneAlt: 'rgba(0,0,0,0.02)',
-  raised: 'inset 0 0 0 1px rgba(0,0,0,0.05), 0 8px 24px rgba(40,30,20,0.08)',
-  raisedSm: 'inset 0 0 0 1px rgba(0,0,0,0.06), 0 2px 6px rgba(40,30,20,0.06)',
-  pressedIn: 'inset 0 0 0 1px rgba(0,0,0,0.06)',
-  selected: '0 0 0 1px rgba(76,118,8,0.35), 0 4px 12px rgba(110,150,20,0.28)',
+  veil: 'rgba(255,248,238,0.6)',
+  edge: '#1A1A2E',
+  gold: '#FFD15C',
+  pop: '#8B5CF6',
+  dots: 'rgba(26,26,46,0.07)',
+  raised: '0 0 0 2.5px #1A1A2E, 0 5px 0 2.5px #1A1A2E',
+  raisedSm: '0 0 0 2px #1A1A2E, 0 3px 0 2px #1A1A2E',
+  pressedIn: 'inset 0 0 0 2px rgba(26,26,46,0.08)',
+  selected: '0 0 0 2px #1A1A2E, 0 3px 0 2px #1A1A2E',
   glow: '0 0 10px rgba(110,150,20,0.45)',
 };
 

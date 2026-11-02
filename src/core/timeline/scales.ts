@@ -14,17 +14,16 @@ export type Scale = {
   snap: Interval;
   /** Length of a new task created at this zoom. */
   taskLength: Interval;
-  label: Intl.DateTimeFormatOptions;
 };
 
 export const SCALES: readonly Scale[] = [
-  { id: 'sec', span: 40 * SECOND, minor: { unit: 'second', step: 1 }, major: { unit: 'second', step: 5 }, snap: { unit: 'second', step: 1 }, taskLength: { unit: 'minute', step: 1 }, label: { hour: 'numeric', minute: '2-digit', second: '2-digit' } },
-  { id: 'min', span: 30 * MINUTE, minor: { unit: 'minute', step: 1 }, major: { unit: 'minute', step: 5 }, snap: { unit: 'minute', step: 1 }, taskLength: { unit: 'minute', step: 25 }, label: { hour: 'numeric', minute: '2-digit' } },
-  { id: 'hour', span: 9 * 60 * MINUTE, minor: { unit: 'minute', step: 15 }, major: { unit: 'hour', step: 1 }, snap: { unit: 'minute', step: 15 }, taskLength: { unit: 'minute', step: 25 }, label: { hour: 'numeric' } },
-  { id: 'day', span: 4 * DAY, minor: { unit: 'hour', step: 6 }, major: { unit: 'day', step: 1 }, snap: { unit: 'hour', step: 1 }, taskLength: { unit: 'hour', step: 1 }, label: { weekday: 'short', day: 'numeric' } },
-  { id: 'week', span: 42 * DAY, minor: { unit: 'day', step: 1 }, major: { unit: 'week', step: 1 }, snap: { unit: 'day', step: 1 }, taskLength: { unit: 'day', step: 1 }, label: { month: 'short', day: 'numeric' } },
-  { id: 'month', span: 240 * DAY, minor: { unit: 'week', step: 1 }, major: { unit: 'month', step: 1 }, snap: { unit: 'day', step: 1 }, taskLength: { unit: 'week', step: 1 }, label: { month: 'short' } },
-  { id: 'year', span: 6 * 365 * DAY, minor: { unit: 'month', step: 1 }, major: { unit: 'year', step: 1 }, snap: { unit: 'month', step: 1 }, taskLength: { unit: 'month', step: 1 }, label: { year: 'numeric' } },
+  { id: 'sec', span: 40 * SECOND, minor: { unit: 'second', step: 1 }, major: { unit: 'second', step: 5 }, snap: { unit: 'second', step: 1 }, taskLength: { unit: 'minute', step: 1 } },
+  { id: 'min', span: 30 * MINUTE, minor: { unit: 'minute', step: 1 }, major: { unit: 'minute', step: 5 }, snap: { unit: 'minute', step: 1 }, taskLength: { unit: 'minute', step: 25 } },
+  { id: 'hour', span: 9 * 60 * MINUTE, minor: { unit: 'minute', step: 15 }, major: { unit: 'hour', step: 1 }, snap: { unit: 'minute', step: 5 }, taskLength: { unit: 'minute', step: 25 } },
+  { id: 'day', span: 4 * DAY, minor: { unit: 'hour', step: 6 }, major: { unit: 'day', step: 1 }, snap: { unit: 'hour', step: 1 }, taskLength: { unit: 'hour', step: 1 } },
+  { id: 'week', span: 42 * DAY, minor: { unit: 'day', step: 1 }, major: { unit: 'week', step: 1 }, snap: { unit: 'day', step: 1 }, taskLength: { unit: 'day', step: 1 } },
+  { id: 'month', span: 240 * DAY, minor: { unit: 'week', step: 1 }, major: { unit: 'month', step: 1 }, snap: { unit: 'day', step: 1 }, taskLength: { unit: 'week', step: 1 } },
+  { id: 'year', span: 6 * 365 * DAY, minor: { unit: 'month', step: 1 }, major: { unit: 'year', step: 1 }, snap: { unit: 'month', step: 1 }, taskLength: { unit: 'month', step: 1 } },
 ];
 
 export function getScale(id: ScaleId): Scale {

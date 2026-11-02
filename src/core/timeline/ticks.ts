@@ -1,5 +1,5 @@
 import { addUnit, APPROX_MS, floorUnit, MINUTE, type Interval, type WeekStart } from '../time/units';
-import type { Scale } from './scales';
+import type { ScaleId } from './scales';
 
 const LABEL_STRIDES = [1, 2, 3, 4, 6, 12, 24];
 
@@ -40,8 +40,42 @@ function next(t: number, { unit, step }: Interval, weekStart: WeekStart): number
   }
 }
 
-/** Text for a labelled tick at this zoom, in the user's locale. January also shows the year at month zoom. */
-export function tickLabel(t: number, scale: Scale, locale?: string): string {
-  const options = scale.id === 'month' && new Date(t).getMonth() === 0 ? { month: 'short', year: 'numeric' } as const : scale.label;
-  return new Intl.DateTimeFormat(locale, options).format(t);
+const pad = (n: number) => String(n).padStart(2, '0');
+const part = (t: number, options: Intl.DateTimeFormatOptions, locale?: string) => new Intl.DateTimeFormat(locale, options).format(t);
+
+/** "21:05" or "21:05:30": the timeline's own 24-hour clock, the same in every locale. */
+export function clock24(t: number, seconds = false): string {
+  const d = new Date(t);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}${seconds ? `:${pad(d.getSeconds())}` : ''}`;
+}
+
+/**
+ * A ruler label in two halves, one each side of the spine: hours | minutes when zoomed in (the "h | m" ruler),
+ * weekday | date, month | date, month | year further out.
+ */
+export function rulerLabel(t: number, scale: ScaleId, locale?: string): [string, string] {
+  const d = new Date(t);
+  switch (scale) {
+    case 'sec':
+      return [clock24(t), pad(d.getSeconds())];
+    case 'min':
+    case 'hour':
+      return [pad(d.getHours()), pad(d.getMinutes())];
+    case 'day':
+      return [part(t, { weekday: 'short' }, locale).toUpperCase(), String(d.getDate())];
+    case 'week':
+      return [part(t, { month: 'short' }, locale).toUpperCase(), String(d.getDate())];
+    case 'month':
+      return [part(t, { month: 'short' }, locale).toUpperCase(), String(d.getFullYear())];
+    case 'year':
+      return [String(d.getFullYear()), ''];
+  }
+}
+
+/** What the pointer reads at each zoom: a time, a day ("Tue 3") or a month ("Mar 2027"). */
+export function pointerLabel(t: number, scale: ScaleId, locale?: string): string {
+  if (scale === 'sec') return clock24(t, true);
+  if (scale === 'week' || scale === 'month') return `${part(t, { weekday: 'short' }, locale)} ${new Date(t).getDate()}`;
+  if (scale === 'year') return part(t, { month: 'short', year: 'numeric' }, locale);
+  return clock24(t);
 }

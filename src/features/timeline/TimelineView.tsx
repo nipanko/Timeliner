@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
@@ -20,27 +21,31 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { expandEntries, parseRepeat, repeatLabel } from '@/core/entries/repeat';
 import { reschedule } from '@/core/entries/timing';
-import { floorUnit, type Interval } from '@/core/time/units';
-import { laneAfterDrag, layoutTimeline, type PlacedItem } from '@/core/timeline/layout';
+import { entryXp } from '@/core/game/xp';
+import { addUnit, APPROX_MS, floorUnit, HOUR, SECOND, type Interval, type WeekStart } from '@/core/time/units';
 import { zoomAfterPinch, type Scale, type ScaleId } from '@/core/timeline/scales';
-import { hasLabel, labelEvery, tickLabel, ticks } from '@/core/timeline/ticks';
+import { BUCKET_ZOOM, BUCKETS, bucketize, snapTo, spineSides, stackCards, type Side } from '@/core/timeline/spine';
+import { clock24, hasLabel, labelEvery, pointerLabel, rulerLabel, ticks } from '@/core/timeline/ticks';
 import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
 import type { Entry, Layer } from '@/features/entries/data';
+import { Tick } from '@/features/game/Tick';
 import { useNow } from '@/hooks/useNow';
 import { useLoop } from '@/ui/motion';
-import { Tick } from '@/features/game/Tick';
 import { KIND_ICONS, usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
-
 type PanGesture = ReturnType<typeof usePanGesture>;
 
-const NODE = 26; // branch node size
-const ANCHOR = 0.3; // where "now" sits along the axis, measured from the past end
+const ANCHOR = 0.42; // where the pointer sits along the axis, measured from the past end
 const BUFFER = 1; // screens laid out beyond each edge
 const FAR_PX = 20_000; // re-base positions before native (float32) transforms lose precision
+const SPINE = 14; // the spine's thickness
+const EDGE = 8; // gap between cards and the edge of the timeline
+const NODE = 24; // the round check on a card
+const GAP = 8; // between stacked cards on one side
+const NEAR = 40; // px: "now" this close to the pointer rides on it
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-const clockFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 /** The camera outlives a zoom change (TimelineView remounts per zoom), so the screen owns it. */
 export type Camera = { anchorTime: SharedValue<number>; following: SharedValue<boolean> };
@@ -49,43 +54,61 @@ type Props = {
   entries: readonly Entry[];
   /** Finished occurrences of repeating entries (expanded here, for whatever stretch of time is drawn). */
   completed: ReadonlySet<string>;
+  /** Visible layers; new entries start in the first one. */
   layers: readonly Layer[];
   scale: Scale;
   direction: Direction;
+  weekStart: WeekStart;
   camera: Camera;
-  /** Tap on empty space: a time (snapped to the zoom) and the lane's layer. */
+  /** The pointer's Add: its exact (snapped) time and the layer a new entry starts in. */
   onAdd: (at: number, layerId: string) => void;
   onOpen: (entryId: string) => void;
   /** The round check on a card: complete or undo without opening it. */
   onToggleDone: (entry: Entry) => void;
-  /** Long-press and drag a card: its new, snapped times and the layer (lane) it was dropped in. */
+  /** Long-press and drag a card along the spine: its new, snapped times. */
   onMove: (entry: Entry, start: number, end: number | null, layerId: string) => void;
   /** A card was picked up (for a haptic). */
   onLift: () => void;
   /** Pinch (or ctrl/⌘ + scroll on web) ended: the finger-distance ratio, > 1 = zoom in. */
   onZoom: (pinchScale: number) => void;
+  /** A bubble (zoomed far out) was tapped: open this zoom at this time. */
+  onZoomTo: (scale: ScaleId, at: number) => void;
+  /** The local day under the pointer changed; the screen's title follows it. */
+  onPointerDay: (day: number) => void;
+  /** The zoom chip on the pointer: view options. */
+  onOpenView: () => void;
+  /** The pointer's time was tapped: dial it in exactly. */
+  onPickTime: (at: number) => void;
 };
 
 const ZOOM_NAMES: Record<ScaleId, string> = { sec: 'Seconds', min: 'Minutes', hour: 'Hours', day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' };
+const ZOOM_SHORT: Record<ScaleId, string> = { sec: 'Sec', min: 'Min', hour: 'Hour', day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 
-export function TimelineView({ entries, completed, layers, scale, direction, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom }: Props) {
+/**
+ * The v2 timeline (DESIGN.md §3.1): one spine through the middle with a "h | m" ruler, entries as cards
+ * alternating on both sides, and a fixed pointer that reads the exact time under it. Endless both ways.
+ */
+export function TimelineView({ entries, completed, layers, scale, direction, weekStart, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom, onZoomTo, onPointerDay, onOpenView, onPickTime }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
   const vertical = isVertical(direction);
   const sign = direction === 'up' || direction === 'left' ? -1 : 1;
-  const HDR = vertical ? 46 : 96; // lane headers along the main-axis start
-  const GUT = vertical ? 76 : 28; // time labels along the cross-axis start ("4:16:10 PM" must fit)
   const span = scale.span;
+  const buckets = BUCKETS[scale.id];
+  const compact = scale.id === 'day';
 
   const [box, setBox] = useState({ w: 0, h: 0 });
-  const L = Math.max(1, (vertical ? box.h : box.w) - HDR);
-  const C = Math.max(1, (vertical ? box.w : box.h) - GUT);
-  // The trunk (time itself) runs beside the time labels; each layer is a lane of branches after it.
-  const TRUNK = GUT + 14;
-  const LANES = GUT + 30;
-  const laneW = Math.max(1, C - (LANES - GUT)) / Math.max(1, layers.length);
-  const laneIds = useMemo(() => layers.map((l) => l.id), [layers]);
+  const L = Math.max(1, vertical ? box.h : box.w);
+  const C = Math.max(1, vertical ? box.w : box.h);
+  // Across the axis: spine in the middle, ruler labels beside it, cards beyond them.
+  const MID = C / 2;
+  const LABEL = vertical ? 40 : 24;
+  const CARD = vertical ? (compact ? 30 : 64) : compact ? 112 : 150; // a card's length along the axis (room for a 2-line title)
+  const room = Math.max(40, MID - SPINE / 2 - LABEL - EDGE);
+  const CROSS = vertical ? Math.min(210, room) : Math.min(compact ? 34 : 60, room);
+  const crossStart = (side: Side) => (side > 0 ? MID + SPINE / 2 + LABEL : MID - SPINE / 2 - LABEL - CROSS);
+  const pointerPx = (sign > 0 ? ANCHOR : 1 - ANCHOR) * L;
 
   // React lays out a window around `center`; positions are measured from `origin`, so moving the
   // window never moves what is already on screen. The UI thread only translates the whole layer.
@@ -113,7 +136,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, cam
     }
   });
 
-  // Anything can stop following the clock (a drag, a tap on a day), so the button watches `following` itself.
+  // Anything can stop following the clock (a drag, a jump), so the button watches `following` itself.
   useAnimatedReaction(
     () => following.get(),
     (now, before) => {
@@ -207,54 +230,87 @@ export function TimelineView({ entries, completed, layers, scale, direction, cam
     );
   };
 
+  // A tap on empty space glides that moment under the pointer, ready for Add.
   const tapEmpty = (x: number, y: number) => {
-    const at = posToTime((vertical ? y : x) / L, { anchorTime: anchorTime.get(), anchorFrac: ANCHOR, span, direction });
-    const lane = layers[Math.min(layers.length - 1, Math.max(0, Math.floor(((vertical ? x : y) - LANES) / laneW)))];
-    if (lane) onAdd(floorUnit(at, scale.snap.unit, scale.snap.step), lane.id);
+    const t = posToTime((vertical ? y : x) / L, { anchorTime: anchorTime.get(), anchorFrac: ANCHOR, span, direction });
+    cancelAnimation(anchorTime);
+    following.set(false);
+    anchorTime.set(withTiming(snapTo(t, scale.snap, 'round', weekStart), { duration: 320 }));
   };
 
   const along = (d: number) => {
     'worklet';
     return vertical ? [{ translateY: d }] : [{ translateX: d }];
   };
+  const nowAt = () => {
+    'worklet';
+    const p = ANCHOR + (nowTime.get() - anchorTime.get()) / span;
+    return (sign > 0 ? p : 1 - p) * L;
+  };
   const contentStyle = useAnimatedStyle(() => ({ transform: along((-sign * (anchorTime.get() - origin) * L) / span) }));
-  // The clock pill pulses gently (DESIGN.md §2); off with reduce motion.
-  const pulse = useLoop(1800);
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + 0.06 * pulse.get() }] }));
   const nowStyle = useAnimatedStyle(() => {
-    const p = ANCHOR + (nowTime.get() - anchorTime.get()) / span;
-    return { opacity: p < -0.02 || p > 1.02 ? 0 : 1, transform: along((sign > 0 ? p : 1 - p) * L) };
+    const at = nowAt();
+    return { opacity: at < -40 || at > L + 40 ? 0 : 1, transform: along(at) };
   });
-  const veilStyle = useAnimatedStyle(() => {
-    const p = ANCHOR + (nowTime.get() - anchorTime.get()) / span;
-    const at = (sign > 0 ? p : 1 - p) * L;
+  // When "now" reaches the pointer (following the clock), Tick hops onto the pointer's time and the pill hides.
+  const tickStyle = useAnimatedStyle(() => {
+    const d = nowAt() - pointerPx;
+    const near = Math.abs(d) < NEAR;
+    return { transform: [{ translateX: near && !vertical ? -d : 0 }, { translateY: near ? (vertical ? -d - 40 : -36) : 0 }] };
+  });
+  const nowPillStyle = useAnimatedStyle(() => ({ opacity: Math.abs(nowAt() - pointerPx) < NEAR ? 0 : 1 }));
+  // The lit spine behind "now": the trail you have walked.
+  const trailStyle = useAnimatedStyle(() => {
+    const at = nowAt();
     return { transform: along(sign > 0 ? Math.min(0, Math.max(-L, at - L)) : Math.min(L, Math.max(0, at))) };
   });
 
   const laid = useMemo(() => {
     const v: Viewport = { anchorTime: center, anchorFrac: ANCHOR, span, direction };
     const shift = (sign * (center - origin) * L) / span;
-    const px = (pos: number) => pos * L + shift;
+    const px = (t: number) => timeToPos(t, v) * L + shift;
     const { start, end } = visibleRange(v);
     const from = start - BUFFER * span;
     const to = end + BUFFER * span;
-    const shown = expandEntries(entries, completed, from, to);
-    const byId = new Map(shown.map((e) => [e.id, e]));
-    const every = labelEvery(scale.major, span, L, vertical ? 20 : 90);
-    return {
-      majors: ticks(from, to, scale.major).map((t) => ({ t, at: px(timeToPos(t, v)), label: hasLabel(t, scale.major, every) ? tickLabel(t, scale) : '' })),
-      minors: ticks(from, to, scale.minor).map((t) => ({ t, at: px(timeToPos(t, v)) })),
-      items: layoutTimeline(shown, layers.map((l) => l.id), v, L, { buffer: BUFFER, pillPx: vertical ? 30 : 128 }).map((it) => ({
-        ...it,
-        at: px(it.pos),
-        len: it.size * L,
-        entry: byId.get(it.id)!,
-      })),
+    const lo = shift - BUFFER * L;
+    const hi = shift + (1 + BUFFER) * L;
+    const every = labelEvery(scale.major, span, L, vertical ? 22 : 70);
+    const fine = scale.id === 'sec' || scale.id === 'min' || scale.id === 'hour';
+    const visible = new Set(layers.map((l) => l.id));
+    const ruler = {
+      majors: ticks(from, to, scale.major, weekStart).map((t) => ({ t, at: px(t), label: hasLabel(t, scale.major, every) ? rulerLabel(t, scale.id) : null })),
+      minors: ticks(from, to, scale.minor, weekStart).map((t) => ({ t, at: px(t) })),
+      days: fine ? ticks(from, to, { unit: 'day', step: 1 }, weekStart).map((t) => ({ t, at: px(t) })) : [],
     };
-  }, [entries, completed, layers, scale, direction, center, origin, span, L, sign, vertical]);
+    if (buckets) {
+      const shown = expandEntries(entries, completed, from, to).filter((e) => visible.has(e.layerId));
+      const bubbles = bucketize(shown, buckets, from, to, weekStart).map((b) => {
+        const a = px(b.start);
+        const z = px(b.end);
+        // Same-side neighbours are two buckets apart, so a bubble may grow to almost that.
+        return { ...b, at: (a + z) / 2, size: Math.max(16, Math.min(30, Math.abs(z - a) * 2 - 6)) };
+      });
+      return { ...ruler, bubbles, cards: [] };
+    }
+    // Sides and stacking use whole days, so cards don't shuffle as the window moves.
+    const dayFrom = floorUnit(from, 'day');
+    const dayTo = addUnit(floorUnit(to, 'day'), 'day', 1);
+    const shown = expandEntries(entries, completed, dayFrom, dayTo).filter((e) => visible.has(e.layerId) && e.start < dayTo && (e.end ?? e.start) >= dayFrom);
+    const sides = spineSides(shown);
+    const anchors = shown.map((e) => ({ id: e.id, at: px(e.start), side: sides.get(e.id) ?? 1 }));
+    const tops = stackCards(anchors, CARD, GAP);
+    const cards = shown.flatMap((entry, i) => {
+      const { at, side } = anchors[i];
+      const top = tops.get(entry.id) ?? at - CARD / 2;
+      const endAt = entry.end === null ? null : px(entry.end);
+      const first = Math.min(top, at, endAt ?? at);
+      const last = Math.max(top + CARD, at, endAt ?? at);
+      return last < lo || first > hi ? [] : [{ entry, side, at, top, endAt }];
+    });
+    return { ...ruler, bubbles: [], cards };
+  }, [entries, completed, layers, scale, direction, weekStart, buckets, center, origin, span, L, sign, vertical, CARD]);
 
   const minuteNow = useNow(60_000);
-  const today = floorUnit(minuteNow, 'day');
   // The next thing to do pulses (DESIGN.md: "next up"); only timed entries still ahead.
   const nextId = useMemo(() => {
     let best: Entry | undefined;
@@ -262,135 +318,281 @@ export function TimelineView({ entries, completed, layers, scale, direction, cam
       if (!e.done && e.kind !== 'note' && e.granularity === 'moment' && e.start >= minuteNow && (!best || e.start < best.start)) best = e;
     return best?.id;
   }, [entries, completed, minuteNow]);
+  const layerById = useMemo(() => new Map(layers.map((l) => [l.id, l])), [layers]);
   const place = (at: number, len: number, cross: number, crossLen: number): ViewStyle =>
     vertical ? { top: at, height: len, left: cross, width: crossLen } : { left: at, width: len, top: cross, height: crossLen };
-  const body: ViewStyle = vertical ? { top: HDR, left: 0, right: 0, bottom: 0 } : { left: HDR, top: 0, bottom: 0, right: 0 };
-  const zeroAlong: ViewStyle = vertical ? { top: 0, left: 0, right: 0, height: 0 } : { left: 0, top: 0, bottom: 0, width: 0 };
+  // Cards fade out at both ends instead of being cut off.
+  const fade = (end: 'start' | 'end'): ViewStyle =>
+    vertical
+      ? end === 'start' ? { left: 0, right: 0, top: 0, height: 22 } : { left: 0, right: 0, bottom: 0, height: 22 }
+      : end === 'start' ? { top: 0, bottom: 0, left: 0, width: 22 } : { top: 0, bottom: 0, right: 0, width: 22 };
 
   return (
-    <View
-      ref={root}
-      style={[styles.tray, { backgroundColor: c.tray, boxShadow: c.pressedIn }]}
-      onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
-    >
+    <View ref={root} style={styles.tray} onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
       {box.w > 0 && (
-        <>
-          {layers.map((layer, i) => (
-            <View
-              key={layer.id}
-              style={[
-                styles.abs,
-                vertical ? { top: HDR, bottom: 0, left: LANES + i * laneW, width: laneW } : { left: HDR, right: 0, top: LANES + i * laneW, height: laneW },
-                { backgroundColor: i % 2 ? c.laneAlt : 'transparent' },
-              ]}
-            />
-          ))}
+        <GestureDetector gesture={gestures}>
+          <View style={[styles.abs, styles.fill, styles.clip]} accessibilityLabel="Timeline. Drag to move through time; the pointer in the middle shows where Add puts a new entry.">
+            <Pressable accessible={false} onPress={(e) => tapEmpty(e.nativeEvent.locationX, e.nativeEvent.locationY)} style={[styles.abs, styles.fill]} />
 
-          <GestureDetector gesture={gestures}>
-            <View style={[styles.abs, body, styles.clip]} accessibilityLabel="Timeline. Drag to move through time.">
-              <Pressable accessible={false} onPress={(e) => tapEmpty(e.nativeEvent.locationX, e.nativeEvent.locationY)} style={[styles.abs, styles.fill]} />
-              <Animated.View entering={FadeIn.duration(250)} pointerEvents="box-none" style={[styles.abs, styles.fill, contentStyle]}>
-                {laid.majors.map((m) => (
-                  <View key={`l${m.t}`} style={[styles.abs, styles.noTouch, place(m.at, 1, GUT, C), { backgroundColor: c.line }]} />
-                ))}
-                {laid.minors.map((m) => (
-                  <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, vertical ? place(m.at, 1, GUT - 7, 7) : place(m.at, 1, GUT - 6, 6), { backgroundColor: c.lineStrong }]} />
-                ))}
-                {laid.items.map((it) => (
-                  <Item key={it.id} it={it} layer={layers[it.lane]} c={c} vertical={vertical} place={place} laneStart={LANES + it.lane * laneW} laneW={laneW} trunk={TRUNK} isNext={it.id === nextId} onOpen={onOpen} onToggleDone={onToggleDone} onMove={onMove} onLift={onLift} laneIds={laneIds} msPerPx={(sign * span) / L} snap={scale.snap} outerPan={pan} now={minuteNow} />
-                ))}
-                {laid.majors.filter((m) => m.label).map((m) => (
-                  <Text
-                    key={`t${m.t}`}
-                    numberOfLines={1}
-                    style={[styles.abs, styles.noTouch, styles.tick, { color: c.muted }, vertical ? [place(m.at - 8, 16, 0, GUT - 8), styles.tickV] : [place(m.at - 48, 96, 0, GUT), styles.tickH, { lineHeight: GUT }]]}
-                  >
-                    {m.label}
-                  </Text>
-                ))}
-              </Animated.View>
-
-              <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, { backgroundColor: c.veil }, veilStyle]} />
-
-              {/* The trunk: dim ahead, lit behind you (the trail you have walked). */}
-              <View pointerEvents="none" style={[styles.abs, vertical ? { top: 0, bottom: 0, left: TRUNK - 1.5, width: 3 } : { left: 0, right: 0, top: TRUNK - 1.5, height: 3 }, { backgroundColor: c.lineStrong, borderRadius: 2 }]} />
-              <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, veilStyle]}>
-                <View style={[styles.abs, vertical ? { top: 0, bottom: 0, left: TRUNK - 2, width: 4 } : { left: 0, right: 0, top: TRUNK - 2, height: 4 }, { backgroundColor: c.accentText, boxShadow: c.glow, borderRadius: 2 }]} />
-              </Animated.View>
-
-              <Animated.View pointerEvents="none" style={[styles.abs, zeroAlong, styles.visible, nowStyle]}>
-                <View style={[styles.abs, vertical ? { top: -1, height: 2, left: GUT - 4, right: 0 } : { left: -1, width: 2, top: GUT - 4, bottom: 0 }, { backgroundColor: c.accentText, opacity: 0.55 }]} />
-                <View style={[styles.abs, vertical ? { top: -17, left: TRUNK - 16 } : { left: -16, top: TRUNK - 17 }]}>
-                  <Tick size={32} mood="happy" />
-                </View>
-                <Animated.View style={[styles.abs, styles.pill, vertical ? { top: -11, height: 22, left: 2, width: GUT - 4 } : { left: -48, width: 96, top: 2, height: GUT - 4 }, { backgroundColor: c.accentText, boxShadow: c.glow }, pulseStyle]}>
-                  <ClockText color={c.ground} />
-                </Animated.View>
-              </Animated.View>
-            </View>
-          </GestureDetector>
-
-          <View style={[styles.abs, vertical ? { top: 0, left: 0, right: 0, height: HDR } : { left: 0, top: 0, bottom: 0, width: HDR }, { backgroundColor: c.tray }]} />
-          {layers.map((layer, i) => {
-            const count = expandEntries(entries, completed, today, today + 86_400_000).filter((e) => e.layerId === layer.id && (e.kind === 'task' || e.kind === 'todo') && e.start >= today && e.start < today + 86_400_000).length;
-            return (
-              <View
-                key={layer.id}
-                style={[styles.abs, styles.laneHead, place(5, HDR - 10, LANES + i * laneW + 3, laneW - 6), { backgroundColor: c.panel, boxShadow: c.raisedSm }]}
-              >
-                <View style={[styles.laneDot, { backgroundColor: layer.color.fill, boxShadow: `0 0 8px ${layer.color.fill}` }]} />
-                <View style={styles.laneText}>
-                  <Text numberOfLines={1} style={[styles.laneName, { color: c.ink }]}>{layer.name}</Text>
-                  <Text numberOfLines={1} style={[styles.laneSub, { color: c.muted }]}>{count} today</Text>
-                </View>
-              </View>
-            );
-          })}
-
-          {preview && preview !== scale.id && (
-            <Animated.View entering={FadeIn.duration(120)} pointerEvents="none" style={[styles.zoomChip, { backgroundColor: c.panel, boxShadow: c.raised }]}>
-              <Text style={[styles.zoomChipText, { color: c.ink }]}>{ZOOM_NAMES[preview]}</Text>
+            {/* The spine: a dim track, lit behind "now". */}
+            <View pointerEvents="none" style={[styles.abs, place(-10, L + 20, MID - SPINE / 2, SPINE), { backgroundColor: c.chip, borderRadius: SPINE / 2 }]} />
+            <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, trailStyle]}>
+              <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={vertical ? { x: 0, y: 1 } : { x: 1, y: 0 }} style={[styles.abs, place(0, L, MID - SPINE / 2, SPINE), { borderRadius: SPINE / 2 }]} />
             </Animated.View>
-          )}
 
-          {showNowButton && (
-            <Pressable accessibilityRole="button" onPress={backToNow} style={[styles.nowButton, { backgroundColor: c.accent, boxShadow: c.selected }]}>
-              <Text style={[styles.nowButtonText, { color: c.accentInk }]}>Back to now</Text>
-            </Pressable>
-          )}
-        </>
+            <Animated.View entering={FadeIn.duration(250)} pointerEvents="box-none" style={[styles.abs, styles.fill, contentStyle]}>
+              {laid.minors.map((m) => (
+                <View key={`m${m.t}`} style={[styles.abs, styles.noTouch, place(m.at - 1, 2, MID - 3, 6), { backgroundColor: c.lineStrong }]} />
+              ))}
+              {laid.majors.map((m) => (
+                <View key={`l${m.t}`} style={[styles.abs, styles.noTouch, place(m.at - 1.5, 3, MID - SPINE / 2 - 5, SPINE + 10), { backgroundColor: c.muted, borderRadius: 2 }]} />
+              ))}
+              {laid.majors.map((m) =>
+                m.label ? (
+                  <View key={`t${m.t}`} pointerEvents="none" style={[styles.abs, styles.fill]}>
+                    <Text numberOfLines={1} style={[styles.abs, styles.ruler, { color: c.ink }, vertical ? [place(m.at - 9, 18, MID - SPINE / 2 - LABEL, LABEL - 6), styles.right] : [place(m.at - 40, 80, MID - SPINE / 2 - LABEL, LABEL - 4), styles.middle]]}>
+                      {m.label[0]}
+                    </Text>
+                    <Text numberOfLines={1} style={[styles.abs, styles.ruler, { color: c.muted }, vertical ? place(m.at - 9, 18, MID + SPINE / 2 + 6, LABEL - 6) : [place(m.at - 40, 80, MID + SPINE / 2 + 4, LABEL - 4), styles.middle]]}>
+                      {m.label[1]}
+                    </Text>
+                  </View>
+                ) : null,
+              )}
+              {laid.days.map((d) => (
+                <View key={`d${d.t}`} pointerEvents="none" style={[styles.abs, styles.dayPill, vertical ? place(d.at - 13, 26, MID - 64, 128) : place(d.at - 64, 128, MID - 13, 26), { backgroundColor: c.pop, boxShadow: c.raisedSm }]}>
+                  <Text numberOfLines={1} style={styles.dayText}>
+                    {new Date(d.t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+                  </Text>
+                </View>
+              ))}
+              {laid.cards.map(({ entry, side, at, top, endAt }) => {
+                const layer = layerById.get(entry.layerId);
+                return layer ? (
+                  <SpineCard
+                    key={entry.id}
+                    entry={entry}
+                    layer={layer}
+                    c={c}
+                    vertical={vertical}
+                    compact={compact}
+                    place={place}
+                    side={side}
+                    at={at}
+                    top={top}
+                    endAt={endAt}
+                    mid={MID}
+                    cross={crossStart(side)}
+                    crossLen={CROSS}
+                    cardLen={CARD}
+                    isNext={entry.id === nextId}
+                    now={minuteNow}
+                    onOpen={onOpen}
+                    onToggleDone={onToggleDone}
+                    onMove={onMove}
+                    onLift={onLift}
+                    msPerPx={(sign * span) / L}
+                    snap={scale.snap}
+                    outerPan={pan}
+                  />
+                ) : null;
+              })}
+              {laid.bubbles.map((b) => {
+                const layer = layerById.get(b.layerId);
+                const cross = b.side > 0 ? MID + SPINE / 2 + LABEL : MID - SPINE / 2 - LABEL - b.size;
+                const zoom = BUCKET_ZOOM[scale.id];
+                return (
+                  <Pressable
+                    key={`b${b.start}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${b.count} ${b.count === 1 ? 'entry' : 'entries'} from ${dayFmt.format(b.start)}. Zoom in`}
+                    onPress={() => zoom && onZoomTo(zoom, b.first)}
+                    style={({ pressed }) => [
+                      styles.abs,
+                      styles.bubble,
+                      place(b.at - b.size / 2, b.size, cross, b.size),
+                      { borderRadius: b.size / 2, backgroundColor: layer?.color.fill ?? c.gold, boxShadow: c.raisedSm },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.bubbleText, { fontSize: Math.max(10, b.size * 0.5), color: layer?.color.ink ?? c.edge }]}>{b.count > 99 ? '99+' : b.count}</Text>
+                  </Pressable>
+                );
+              })}
+            </Animated.View>
+
+            {/* "Now": a thin line, Tick on the spine, and a live clock pill at the edge. */}
+            <Animated.View pointerEvents="none" style={[styles.abs, vertical ? { top: 0, left: 0, right: 0, height: 0 } : { left: 0, top: 0, bottom: 0, width: 0 }, styles.visible, nowStyle]}>
+              <View style={[styles.abs, vertical ? { top: -1, height: 2, left: 0, right: 0 } : { left: -1, width: 2, top: 0, bottom: 0 }, { backgroundColor: c.accentText, opacity: 0.45 }]} />
+              <Animated.View style={[styles.abs, nowPillStyle, styles.nowPill, vertical ? { top: -12, left: EDGE } : { left: -40, top: EDGE }, { backgroundColor: c.accent, boxShadow: c.raisedSm }]}>
+                <Text style={[styles.nowLabel, { color: c.accentInk }]}>NOW</Text>
+                <ClockText color={c.accentInk} />
+              </Animated.View>
+              <Animated.View style={[styles.abs, vertical ? { top: -16, left: MID - 16 } : { left: -16, top: MID - 16 }, tickStyle]}>
+                <Tick size={32} mood="happy" />
+              </Animated.View>
+            </Animated.View>
+
+            <View pointerEvents="none" style={[styles.abs, fade('start')]}>
+              <LinearGradient colors={[c.ground, `${c.ground}00`] as const} start={{ x: 0, y: 0 }} end={vertical ? { x: 0, y: 1 } : { x: 1, y: 0 }} style={styles.fillAbs} />
+            </View>
+            <View pointerEvents="none" style={[styles.abs, fade('end')]}>
+              <LinearGradient colors={[`${c.ground}00`, c.ground] as const} start={{ x: 0, y: 0 }} end={vertical ? { x: 0, y: 1 } : { x: 1, y: 0 }} style={styles.fillAbs} />
+            </View>
+
+            <PointerHud
+              c={c}
+              vertical={vertical}
+              at={pointerPx}
+              mid={MID}
+              anchorTime={anchorTime}
+              live={!showNowButton}
+              scale={scale}
+              weekStart={weekStart}
+              layerId={layers[0]?.id}
+              onAdd={onAdd}
+              onOpenView={onOpenView}
+              onPickTime={onPickTime}
+              onPointerDay={onPointerDay}
+            />
+
+            {preview && preview !== scale.id && (
+              <Animated.View entering={FadeIn.duration(120)} pointerEvents="none" style={[styles.zoomChip, { backgroundColor: c.panel, boxShadow: c.raised }]}>
+                <Text style={[styles.zoomChipText, { color: c.ink }]}>{ZOOM_NAMES[preview]}</Text>
+              </Animated.View>
+            )}
+
+            {showNowButton && (
+              <Pressable accessibilityRole="button" onPress={backToNow} style={({ pressed }) => [styles.nowButton, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}>
+                <Ionicons name={sign > 0 ? (vertical ? 'arrow-up' : 'arrow-back') : vertical ? 'arrow-down' : 'arrow-forward'} size={15} color={c.accentText} />
+                <Text style={[styles.nowButtonText, { color: c.ink }]}>Back to now</Text>
+              </Pressable>
+            )}
+          </View>
+        </GestureDetector>
       )}
     </View>
   );
 }
 
-type ItemProps = {
-  it: PlacedItem & { at: number; len: number; entry: Entry };
+type HudProps = {
+  c: Palette;
+  vertical: boolean;
+  /** Where the pointer sits along the axis, px. */
+  at: number;
+  mid: number;
+  anchorTime: SharedValue<number>;
+  /** Following the clock: the pointer reads the next free slot from now. */
+  live: boolean;
+  scale: Scale;
+  weekStart: WeekStart;
+  layerId: string | undefined;
+  onAdd: Props['onAdd'];
+  onOpenView: Props['onOpenView'];
+  onPickTime: Props['onPickTime'];
+  onPointerDay: Props['onPointerDay'];
+};
+
+/** The fixed pointer: a glowing line, the exact time under it, the zoom chip and Add. */
+function PointerHud({ c, vertical, at, mid, anchorTime, live, scale, weekStart, layerId, onAdd, onOpenView, onPickTime, onPointerDay }: HudProps) {
+  // Re-render only when the time under the pointer can have changed by a fraction of a slot, not every frame.
+  const res = Math.max(SECOND, Math.min(HOUR, (APPROX_MS[scale.snap.unit] * scale.snap.step) / 5));
+  const [raw, setRaw] = useState(() => anchorTime.get());
+  useAnimatedReaction(
+    () => Math.floor(anchorTime.get() / res),
+    (k, before) => {
+      if (k !== before) scheduleOnRN(setRaw, k * res);
+    },
+    [res],
+  );
+  const time = snapTo(raw, scale.snap, live ? 'ceil' : 'round', weekStart);
+  const day = floorUnit(time, 'day');
+  useEffect(() => onPointerDay(day), [day, onPointerDay]);
+  const glow = useLoop(2400);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: 0.55 + 0.45 * glow.get() }));
+  const label = pointerLabel(time, scale.id);
+  const spoken = scale.snap.unit === 'day' || scale.snap.unit === 'month' ? dayFmt.format(time) : `${dayFmt.format(time)}, ${timeFmt.format(time)}`;
+
+  return (
+    <>
+      <Animated.View pointerEvents="none" style={[styles.abs, vertical ? { top: at - 1.5, height: 3, left: 0, right: 0 } : { left: at - 1.5, width: 3, top: 0, bottom: 0 }, glowStyle]}>
+        <LinearGradient colors={[`${c.gradient[1]}00`, c.gradient[1], c.gradient[0], `${c.gradient[0]}00`] as const} start={{ x: 0, y: 0 }} end={vertical ? { x: 1, y: 0 } : { x: 0, y: 1 }} style={[styles.fillAbs, { boxShadow: c.glow }]} />
+      </Animated.View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Zoom: ${ZOOM_NAMES[scale.id]}. View options`}
+        onPress={onOpenView}
+        style={({ pressed }) => [styles.abs, styles.zoomButton, vertical ? { top: at - 18, left: EDGE } : { left: at - 38, top: EDGE }, { backgroundColor: c.panel, boxShadow: c.raisedSm }, pressed && styles.pressed]}
+      >
+        <Ionicons name="layers-outline" size={15} color={c.ink} />
+        <Text style={[styles.zoomButtonText, { color: c.ink }]}>{ZOOM_SHORT[scale.id]}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Pointer at ${spoken}. Set an exact time`}
+        onPress={() => onPickTime(time)}
+        style={({ pressed }) => [
+          styles.abs,
+          styles.capsule,
+          vertical ? { top: at - 23, left: mid - 52, width: 104, height: 46 } : { left: at - 52, top: mid - 21, width: 104, height: 42 },
+          { backgroundColor: live ? c.accent : c.gold, boxShadow: c.raised },
+          pressed && styles.pressed,
+        ]}
+      >
+        {live && <Text style={[styles.capsuleTag, { color: c.accentInk }]}>NOW</Text>}
+        <Text numberOfLines={1} style={[styles.capsuleText, label.length > 6 && styles.capsuleLong, { color: live ? c.accentInk : c.edge }]}>
+          {label}
+        </Text>
+      </Pressable>
+      {layerId && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Add an entry at ${spoken}`}
+          onPress={() => onAdd(time, layerId)}
+          style={({ pressed }) => [styles.abs, styles.add, vertical ? { top: at - 23, right: EDGE } : { left: at - 40, bottom: EDGE }, { boxShadow: c.raised }, pressed && styles.pressed]}
+        >
+          <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.addFill}>
+            <Ionicons name="add" size={20} color={c.accentInk} />
+            <Text style={[styles.addText, { color: c.accentInk }]}>Add</Text>
+          </LinearGradient>
+        </Pressable>
+      )}
+    </>
+  );
+}
+
+type CardProps = {
+  entry: Entry;
   layer: Layer;
   c: Palette;
   vertical: boolean;
+  /** Day zoom: one line, no subtitle. */
+  compact: boolean;
   place: (at: number, len: number, cross: number, crossLen: number) => ViewStyle;
-  laneStart: number;
-  laneW: number;
+  side: Side;
+  /** Along the axis, px: the entry's start (where its wire meets the spine), the card's leading edge, the entry's end. */
+  at: number;
+  top: number;
+  endAt: number | null;
+  /** Across the axis, px: the spine's centre and the card's own start and size. */
+  mid: number;
+  cross: number;
+  crossLen: number;
+  cardLen: number;
+  isNext: boolean;
+  now: number;
   onOpen: (entryId: string) => void;
   onToggleDone: (entry: Entry) => void;
   onMove: (entry: Entry, start: number, end: number | null, layerId: string) => void;
   onLift: () => void;
-  /** Lane order (visible layers), for dropping a card into another lane. */
-  laneIds: readonly string[];
   /** Time per pixel along the axis, signed by direction. */
   msPerPx: number;
   snap: Interval;
   /** The timeline's own pan: it waits while a card decides whether it is being moved. */
   outerPan: PanGesture;
-  /** Cross-axis position of the trunk, where the branch starts. */
-  trunk: number;
-  isNext: boolean;
-  now: number;
 };
 
-function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggleDone, onMove, onLift, laneIds, msPerPx, snap, outerPan, trunk, isNext, now }: ItemProps) {
-  const { entry, shape } = it;
+function SpineCard({ entry, layer, c, vertical, compact, place, side, at, top, endAt, mid, cross, crossLen, cardLen, isNext, now, onOpen, onToggleDone, onMove, onLift, msPerPx, snap, outerPan }: CardProps) {
   // Completing a card pops it (1 → 1.08 → 0.97 → 1); an active task's ring breathes (DESIGN.md §2).
   const pop = useSharedValue(1);
   const wasDone = useRef(entry.done);
@@ -400,21 +602,17 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
   }, [entry.done, pop]);
   const active = entry.kind === 'task' && !entry.done && entry.end !== null && entry.start <= now && now < entry.end;
   const breath = useLoop(2000, active);
-  // Long-press, then drag: along the time axis reschedules (snaps to the zoom's slot), sideways changes lane (layer).
+  // Long-press, then drag along the spine to reschedule (snaps to the zoom's slot).
   const shift = useSharedValue(0);
-  const cross = useSharedValue(0);
   const lifted = useSharedValue(false);
   const dragged = useSharedValue(false); // the release after a drag must not open the card
   useLayoutEffect(() => {
     shift.set(0);
-    cross.set(0);
-  }, [entry.start, entry.layerId, shift, cross]);
-  const drop = (alongPx: number, crossPx: number) => {
+  }, [entry.start, shift]);
+  const drop = (alongPx: number) => {
     const next = reschedule(entry.start, entry.end, alongPx * msPerPx, snap);
-    const layerId = laneIds[laneAfterDrag(it.lane, crossPx, laneW, laneIds.length)] ?? entry.layerId;
-    if (next.start !== entry.start || layerId !== entry.layerId) return onMove(entry, next.start, next.end, layerId);
+    if (next.start !== entry.start) return onMove(entry, next.start, next.end, entry.layerId);
     shift.set(withTiming(0, { duration: 180 }));
-    cross.set(withTiming(0, { duration: 180 }));
   };
   const move = usePanGesture({
     // One occurrence of a repeat can't be moved alone yet; edit the series in its sheet.
@@ -434,123 +632,109 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
     },
     onUpdate: (e) => {
       shift.set(vertical ? e.translationY : e.translationX);
-      cross.set(vertical ? e.translationX : e.translationY);
     },
     onDeactivate: (e) => {
       lifted.set(false);
-      scheduleOnRN(drop, vertical ? e.translationY : e.translationX, vertical ? e.translationX : e.translationY);
+      scheduleOnRN(drop, vertical ? e.translationY : e.translationX);
     },
   });
-  const popStyle = useAnimatedStyle(() => ({
+  const cardStyle = useAnimatedStyle(() => ({
     zIndex: lifted.get() ? 20 : 0,
     opacity: lifted.get() ? 0.92 : 1,
-    transform: [
-      { translateX: vertical ? cross.get() : shift.get() },
-      { translateY: vertical ? shift.get() : cross.get() },
-      { scale: pop.get() * (lifted.get() ? 1.05 : 1) },
-    ],
+    transform: [{ translateX: vertical ? 0 : shift.get() }, { translateY: vertical ? shift.get() : 0 }, { scale: pop.get() * (lifted.get() ? 1.05 : 1) }, { rotate: lifted.get() ? `${side * 2}deg` : '0deg' }],
   }));
   const breathStyle = useAnimatedStyle(() => ({ opacity: 0.2 + 0.6 * breath.get() }));
   const nextPulse = useLoop(1600, isNext);
-  const nextStyle = useAnimatedStyle(() => ({ opacity: 0.55 * (1 - nextPulse.get()), transform: [{ scale: 1 + 0.5 * nextPulse.get() }] }));
-  const branchStyle = useAnimatedStyle(() => ({ opacity: lifted.get() ? 0 : 1 }));
-  const sub = laneW / it.columns;
-  const start = laneStart + it.column * sub;
-  if (shape === 'band') {
-    // Month / year goals: a long bar in their lane and a flag where they begin on the trunk.
-    return (
-      <>
-        <View style={[styles.abs, styles.noTouch, place(it.at, it.len, laneStart + 1, 4), { backgroundColor: layer.color.strong, opacity: 0.45, borderRadius: 2 }]} />
-        <View style={[styles.abs, styles.noTouch, place(it.at - 8, 16, trunk - 8, 16), styles.center]}>
-          <Ionicons name="flag" size={13} color={layer.color.fill} />
-        </View>
-      </>
-    );
-  }
-  // A missed task stays as a neutral gap, never a red failure (RESEARCH.md #10).
+  const nextStyle = useAnimatedStyle(() => ({ opacity: 0.6 * (1 - nextPulse.get()), transform: [{ scale: 1 + 0.6 * nextPulse.get() }] }));
+  const wireStyle = useAnimatedStyle(() => ({ opacity: lifted.get() ? 0 : 1 }));
+
+  // A missed task stays a neutral grey card, never a red failure (RESEARCH.md #10).
   const skipped = entry.kind === 'task' && !entry.done && entry.end !== null && entry.end <= now;
-  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : skipped ? ', missed' : isNext ? ', next up' : ''}`;
   const tone = skipped ? c.lineStrong : layer.color.fill;
-
-  if (shape === 'dot') {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        onPress={() => onOpen(entry.seriesId ?? entry.id)}
-        style={[styles.abs, place(it.at, Math.max(it.len, 8), start + 4, 8), { backgroundColor: tone, opacity: entry.done ? 0.5 : 1, borderRadius: 4 }]}
-      />
-    );
-  }
-
-  // A branch: connector from the trunk, a node you tap to complete, the title beside it,
-  // and a thin bar along the time axis for how long it lasts.
-  const frame = place(it.at, Math.max(it.len, NODE), start + 2, sub - 4);
   const checkable = entry.kind !== 'note';
   const icon = entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind];
   const rule = parseRepeat(entry.repeat);
-  const when = entry.end !== null && entry.granularity === 'moment' ? `${timeFmt.format(entry.start)}–${timeFmt.format(entry.end)}` : timeFmt.format(entry.start);
-  const subtitle = entry.done ? 'Done' : skipped ? 'Missed, no penalty' : isNext ? 'Next up' : rule ? `${when} · ${repeatLabel(rule)}` : when;
+  const xp = entryXp({ ...entry, done: true });
+  const when = clock24(entry.start);
+  const subtitle = entry.done ? `Done · +${xp} XP` : skipped ? 'Missed, no penalty' : isNext ? `Next · ${when}` : rule ? `${when} · ${repeatLabel(rule)}` : `${when} · +${xp} XP`;
+  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : skipped ? ', missed' : isNext ? ', next up' : ''}`;
+
+  // The wire: from the spine at the entry's time, across the ruler, then along to the card if it was pushed.
+  const spineEdge = mid + (side * SPINE) / 2;
+  const inner = side > 0 ? cross : cross + crossLen;
+  const elbow = inner - side * 6;
+  const hit = Math.min(top + cardLen - 10, Math.max(top + 10, at));
+  const node = compact ? 18 : NODE;
+  const pad = compact ? 5 : 8;
+
   return (
     <>
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.abs,
-          vertical ? { top: it.at + NODE / 2 - 1, height: 2, left: trunk, width: start + 2 + NODE / 2 - trunk } : { left: it.at + NODE / 2 - 1, width: 2, top: trunk, height: start + 2 + NODE / 2 - trunk },
-          { backgroundColor: tone, opacity: skipped ? 1 : 0.7 },
-          branchStyle,
-        ]}
-      />
+      {endAt !== null && Math.abs(endAt - at) > 2 && (
+        <View pointerEvents="none" style={[styles.abs, place(Math.min(at, endAt), Math.abs(endAt - at), side > 0 ? mid + SPINE / 2 + 3 : mid - SPINE / 2 - 7, 4), { backgroundColor: tone, opacity: 0.6, borderRadius: 2 }]} />
+      )}
+      <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, wireStyle]}>
+        <View style={[styles.abs, place(at - 1.5, 3, Math.min(spineEdge, elbow), Math.abs(elbow - spineEdge)), { backgroundColor: tone }]} />
+        {hit !== at && <View style={[styles.abs, place(Math.min(at, hit) - 1.5, Math.abs(hit - at) + 3, elbow - 1.5, 3), { backgroundColor: tone }]} />}
+        <View style={[styles.abs, place(hit - 1.5, 3, Math.min(elbow, inner), Math.abs(inner - elbow)), { backgroundColor: tone }]} />
+      </Animated.View>
       <GestureDetector gesture={move}>
-        <View style={[styles.abs, frame]}>
-          <Animated.View style={[styles.abs, styles.fill, popStyle]}>
-            {it.len > NODE && (
-              <View
-                pointerEvents="none"
-                style={[styles.abs, vertical ? { top: NODE / 2, bottom: 0, left: NODE / 2 - 2, width: 4 } : { left: NODE / 2, right: 0, top: NODE / 2 - 2, height: 4 }, { backgroundColor: tone, opacity: 0.3, borderRadius: 2 }]}
-              />
-            )}
-            {isNext && <Animated.View pointerEvents="none" style={[styles.abs, styles.node, { borderColor: layer.color.fill, borderWidth: 2 }, nextStyle]} />}
-            {active && <Animated.View pointerEvents="none" style={[styles.abs, styles.node, styles.breath, { borderColor: layer.color.fill }, breathStyle]} />}
-            <Pressable
-              accessibilityRole={checkable ? 'checkbox' : 'button'}
-              aria-checked={checkable ? entry.done : undefined}
-              accessibilityLabel={checkable ? `Mark ${entry.title} ${entry.done ? 'not done' : 'done'}` : label}
-              hitSlop={8}
-              onPress={() => !dragged.get() && (checkable ? onToggleDone(entry) : onOpen(entry.seriesId ?? entry.id))}
-              style={({ pressed }) => [
-                styles.abs,
-                styles.node,
-                entry.done
-                  ? { backgroundColor: layer.color.fill, boxShadow: `0 0 10px ${layer.color.fill}` }
-                  : skipped
-                    ? { backgroundColor: c.tray, borderWidth: 2, borderStyle: 'dashed', borderColor: c.lineStrong }
-                    : { backgroundColor: c.panel, borderWidth: 2.5, borderColor: layer.color.fill },
-                pressed && styles.pressed,
-              ]}
-            >
-              {entry.done ? (
-                <Animated.View entering={ZoomIn.springify()}>
-                  <Ionicons name="checkmark" size={15} color={layer.color.ink} />
-                </Animated.View>
-              ) : (
-                <Ionicons name={icon} size={12} color={skipped ? c.muted : layer.color.fill} />
-              )}
-            </Pressable>
+        <View style={[styles.abs, place(top, cardLen, cross, crossLen)]}>
+          <Animated.View
+            style={[
+              styles.abs,
+              styles.fill,
+              styles.card,
+              { padding: pad, gap: pad },
+              entry.done
+                ? { backgroundColor: layer.color.fill, borderColor: c.edge, boxShadow: `0 4px 0 ${c.edge}` }
+                : skipped
+                  ? { backgroundColor: c.tray, borderColor: c.lineStrong, borderStyle: 'dashed' }
+                  : { backgroundColor: c.panel, borderColor: layer.color.fill, boxShadow: `0 4px 0 ${c.edge}` },
+              cardStyle,
+            ]}
+          >
+            <View style={{ width: node, height: node }}>
+              {isNext && <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, styles.ring, { borderRadius: node / 2, borderColor: layer.color.fill }, nextStyle]} />}
+              {active && <Animated.View pointerEvents="none" style={[styles.abs, styles.fill, styles.ring, { borderRadius: node / 2, borderColor: layer.color.fill }, breathStyle]} />}
+              <Pressable
+                accessibilityRole={checkable ? 'checkbox' : 'button'}
+                aria-checked={checkable ? entry.done : undefined}
+                accessibilityLabel={checkable ? `Mark ${entry.title} ${entry.done ? 'not done' : 'done'}` : label}
+                hitSlop={8}
+                onPress={() => !dragged.get() && (checkable ? onToggleDone(entry) : onOpen(entry.seriesId ?? entry.id))}
+                style={({ pressed }) => [
+                  styles.abs,
+                  styles.fill,
+                  styles.center,
+                  { borderRadius: node / 2 },
+                  entry.done ? { backgroundColor: c.panel } : { borderWidth: 2.5, borderColor: skipped ? c.lineStrong : layer.color.fill },
+                  pressed && styles.pressed,
+                ]}
+              >
+                {entry.done ? (
+                  <Animated.View entering={ZoomIn.springify()}>
+                    <Ionicons name="checkmark" size={compact ? 12 : 15} color={c.ink} />
+                  </Animated.View>
+                ) : (
+                  <Ionicons name={icon} size={compact ? 9 : 11} color={skipped ? c.muted : layer.color.fill} />
+                )}
+              </Pressable>
+            </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={label}
               accessibilityHint={entry.granularity === 'moment' ? 'Long-press and drag to move it' : undefined}
               onPress={() => !dragged.get() && onOpen(entry.seriesId ?? entry.id)}
-              style={({ pressed }) => [styles.abs, vertical ? { top: 0, left: NODE + 6, right: 0 } : { left: NODE + 6, top: 0, width: 150 }, styles.labelBox, pressed && styles.pressed]}
+              style={styles.cardText}
             >
-              <Text numberOfLines={1} style={[styles.itemTitle, { color: skipped ? c.muted : c.ink }, entry.done && styles.doneTitle]}>
+              <Text numberOfLines={compact ? 1 : 2} style={[compact ? styles.titleCompact : styles.title, { color: entry.done ? layer.color.ink : skipped ? c.muted : c.ink }]}>
                 {entry.title}
               </Text>
-              <Text numberOfLines={1} style={[styles.itemTime, { color: entry.done ? layer.color.fill : isNext ? c.accentText : c.muted }]}>
-                {subtitle}
-              </Text>
+              {!compact && (
+                <Text numberOfLines={1} style={[styles.sub, { color: entry.done ? layer.color.ink : isNext ? c.accentText : c.muted }]}>
+                  {subtitle}
+                </Text>
+              )}
             </Pressable>
           </Animated.View>
         </View>
@@ -561,36 +745,46 @@ function Item({ it, layer, c, vertical, place, laneStart, laneW, onOpen, onToggl
 
 function ClockText({ color }: { color: string }) {
   const now = useNow(1000);
-  return <Text numberOfLines={1} style={[styles.clock, { color }]}>{clockFmt.format(now)}</Text>;
+  return <Text numberOfLines={1} style={[styles.clock, { color }]}>{clock24(now, true)}</Text>;
 }
 
 const styles = StyleSheet.create({
-  tray: { flex: 1, borderRadius: 24, overflow: 'hidden' },
+  tray: { flex: 1 },
   abs: { position: 'absolute' },
   fill: { top: 0, left: 0, right: 0, bottom: 0 },
+  fillAbs: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   clip: { overflow: 'hidden' },
   visible: { overflow: 'visible' },
   noTouch: { pointerEvents: 'none' }, // as a style it's dropped on Animated views on web, so those use the prop
-  tick: { fontSize: 11, fontFamily: F.semi, fontVariant: ['tabular-nums'] },
-  tickV: { textAlign: 'right', lineHeight: 16 },
-  tickH: { textAlign: 'center' },
-  pill: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  clock: { fontSize: 10.5, fontFamily: F.bold, fontVariant: ['tabular-nums'] },
-  laneHead: { borderRadius: 12, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  laneDot: { width: 8, height: 8, borderRadius: 4 },
-  laneText: { flex: 1 },
-  laneName: { fontSize: 12, fontFamily: F.bold },
-  laneSub: { fontSize: 10.5, fontFamily: F.semi },
   center: { alignItems: 'center', justifyContent: 'center' },
-  node: { top: 0, left: 0, width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center' },
-  labelBox: { minHeight: NODE, justifyContent: 'center' },
-  itemTitle: { flex: 1, fontSize: 12.5, fontFamily: F.semi, letterSpacing: -0.1 },
-  pressed: { transform: [{ scale: 0.97 }] },
-  breath: { borderWidth: 2 },
-  itemTime: { fontSize: 10.5, fontFamily: F.semi, opacity: 0.8, fontVariant: ['tabular-nums'] },
-  doneTitle: { opacity: 0.75 },
-  nowButton: { position: 'absolute', right: 10, bottom: 10, height: 44, paddingHorizontal: 16, borderRadius: 999, justifyContent: 'center' },
+  ruler: { fontSize: 13, fontFamily: F.display, lineHeight: 18 },
+  right: { textAlign: 'right' },
+  middle: { textAlign: 'center', lineHeight: 22 },
+  dayPill: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  dayText: { fontSize: 12, fontFamily: F.display, letterSpacing: 1, color: '#FFFFFF' },
+  card: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 3 },
+  ring: { borderWidth: 2 },
+  cardText: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  title: { fontSize: 12.5, lineHeight: 15, fontFamily: F.bold },
+  titleCompact: { fontSize: 11.5, fontFamily: F.bold },
+  sub: { fontSize: 10.5, fontFamily: F.bold, opacity: 0.85 },
+  bubble: { alignItems: 'center', justifyContent: 'center' },
+  bubbleText: { fontFamily: F.display },
+  nowPill: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 7, borderRadius: 10 },
+  nowLabel: { fontSize: 9.5, fontFamily: F.display, letterSpacing: 0.8 },
+  clock: { fontSize: 11, fontFamily: F.bold, fontVariant: ['tabular-nums'] },
+  zoomButton: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 36, paddingHorizontal: 10, borderRadius: 12 },
+  zoomButtonText: { fontSize: 12.5, fontFamily: F.bold },
+  capsule: { borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  capsuleTag: { fontSize: 9, fontFamily: F.display, letterSpacing: 1.2, marginBottom: -3 },
+  capsuleText: { fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
+  capsuleLong: { fontSize: 18, letterSpacing: 0 },
+  add: { height: 46, borderRadius: 16, overflow: 'hidden' },
+  addFill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2, paddingLeft: 10, paddingRight: 14 },
+  addText: { fontSize: 16, fontFamily: F.display },
+  pressed: { transform: [{ scale: 0.95 }] },
+  nowButton: { position: 'absolute', right: EDGE, bottom: EDGE + 4, flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14, borderRadius: 999 },
   nowButtonText: { fontSize: 13, fontFamily: F.bold },
-  zoomChip: { position: 'absolute', alignSelf: 'center', top: '42%', paddingHorizontal: 18, height: 44, borderRadius: 999, justifyContent: 'center' },
+  zoomChip: { position: 'absolute', alignSelf: 'center', top: '20%', paddingHorizontal: 18, height: 44, borderRadius: 999, justifyContent: 'center' },
   zoomChipText: { fontSize: 16, fontFamily: F.display },
 });
