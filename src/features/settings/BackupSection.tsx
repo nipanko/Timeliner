@@ -5,6 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { parseBackup, type Backup } from '@/core/backup';
 import { exportAll, replaceAll } from '@/db/backup';
+import { useClock24 } from '@/features/settings/data';
 import { usePalette, type IconName } from '@/ui/theme';
 import { F } from '@/ui/type';
 
@@ -45,6 +46,7 @@ type Note = { ok: boolean; text: string };
 
 /** Settings › Your data: a backup file you own, and restoring from one (replaces this device's data). */
 export function BackupSection() {
+  const h24 = useClock24();
   const c = usePalette();
   const [pending, setPending] = useState<Pending | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -66,7 +68,7 @@ export function BackupSection() {
     if (text === null) return;
     const parsed = parseBackup(text);
     if (!parsed.ok) return setNote({ ok: false, text: parsed.error });
-    const when = parsed.backup.exportedAt ? new Date(parsed.backup.exportedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'an unknown date';
+    const when = parsed.backup.exportedAt ? new Date(parsed.backup.exportedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: !h24 }) : 'an unknown date';
     const n = parsed.counts;
     setPending({ backup: parsed.backup, summary: `Backup from ${when}: ${n.entries} entries, ${n.layers} layers, ${n.inbox} in the inbox.` });
   };

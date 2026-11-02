@@ -25,7 +25,7 @@ import { entryXp } from '@/core/game/xp';
 import { addUnit, APPROX_MS, floorUnit, HOUR, SECOND, type Interval, type WeekStart } from '@/core/time/units';
 import { zoomAfterPinch, type Scale, type ScaleId } from '@/core/timeline/scales';
 import { BUCKET_ZOOM, BUCKETS, bucketize, snapTo, spineSides, stackCards, type Side } from '@/core/timeline/spine';
-import { clock24, hasLabel, labelEvery, pointerLabel, rulerLabel, ticks } from '@/core/timeline/ticks';
+import { clockTime, hasLabel, labelEvery, pointerLabel, rulerLabel, ticks } from '@/core/timeline/ticks';
 import { isVertical, posToTime, timeToPos, visibleRange, type Direction, type Viewport } from '@/core/timeline/viewport';
 import type { Entry, Layer } from '@/features/entries/data';
 import { Tick } from '@/features/game/Tick';
@@ -44,7 +44,6 @@ const EDGE = 8; // gap between cards and the edge of the timeline
 const NODE = 24; // the round check on a card
 const GAP = 8; // between stacked cards on one side
 const NEAR = 40; // px: "now" this close to the pointer rides on it
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 /** The camera outlives a zoom change (TimelineView remounts per zoom), so the screen owns it. */
@@ -59,6 +58,8 @@ type Props = {
   scale: Scale;
   direction: Direction;
   weekStart: WeekStart;
+  /** 24-hour clock (Settings); false = 12-hour with AM/PM. */
+  h24: boolean;
   camera: Camera;
   /** The pointer's Add: its exact (snapped) time and the layer a new entry starts in. */
   onAdd: (at: number, layerId: string) => void;
@@ -88,7 +89,7 @@ const ZOOM_SHORT: Record<ScaleId, string> = { sec: 'Sec', min: 'Min', hour: 'Hou
  * The v2 timeline (DESIGN.md §3.1): one spine through the middle with a "h | m" ruler, entries as cards
  * alternating on both sides, and a fixed pointer that reads the exact time under it. Endless both ways.
  */
-export function TimelineView({ entries, completed, layers, scale, direction, weekStart, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom, onZoomTo, onPointerDay, onOpenView, onPickTime }: Props) {
+export function TimelineView({ entries, completed, layers, scale, direction, weekStart, h24, camera, onAdd, onOpen, onToggleDone, onMove, onLift, onZoom, onZoomTo, onPointerDay, onOpenView, onPickTime }: Props) {
   const c = usePalette();
   const reduceMotion = useReducedMotion();
   const { anchorTime, following } = camera;
@@ -278,7 +279,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
     const fine = scale.id === 'sec' || scale.id === 'min' || scale.id === 'hour';
     const visible = new Set(layers.map((l) => l.id));
     const ruler = {
-      majors: ticks(from, to, scale.major, weekStart).map((t) => ({ t, at: px(t), label: hasLabel(t, scale.major, every) ? rulerLabel(t, scale.id) : null })),
+      majors: ticks(from, to, scale.major, weekStart).map((t) => ({ t, at: px(t), label: hasLabel(t, scale.major, every) ? rulerLabel(t, scale.id, h24) : null })),
       minors: ticks(from, to, scale.minor, weekStart).map((t) => ({ t, at: px(t) })),
       days: fine ? ticks(from, to, { unit: 'day', step: 1 }, weekStart).map((t) => ({ t, at: px(t) })) : [],
     };
@@ -308,7 +309,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
       return last < lo || first > hi ? [] : [{ entry, side, at, top, endAt }];
     });
     return { ...ruler, bubbles: [], cards };
-  }, [entries, completed, layers, scale, direction, weekStart, buckets, center, origin, span, L, sign, vertical, CARD]);
+  }, [entries, completed, layers, scale, direction, weekStart, h24, buckets, center, origin, span, L, sign, vertical, CARD]);
 
   const minuteNow = useNow(60_000);
   // The next thing to do pulses (DESIGN.md: "next up"); only timed entries still ahead.
@@ -387,6 +388,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
                     cardLen={CARD}
                     isNext={entry.id === nextId}
                     now={minuteNow}
+                    h24={h24}
                     onOpen={onOpen}
                     onToggleDone={onToggleDone}
                     onMove={onMove}
@@ -426,7 +428,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
               <View style={[styles.abs, vertical ? { top: -1, height: 2, left: 0, right: 0 } : { left: -1, width: 2, top: 0, bottom: 0 }, { backgroundColor: c.accentText, opacity: 0.45 }]} />
               <Animated.View style={[styles.abs, nowPillStyle, styles.nowPill, vertical ? { top: -12, left: EDGE } : { left: -40, top: EDGE }, { backgroundColor: c.accent, boxShadow: c.raisedSm }]}>
                 <Text style={[styles.nowLabel, { color: c.accentInk }]}>NOW</Text>
-                <ClockText color={c.accentInk} />
+                <ClockText color={c.accentInk} h24={h24} />
               </Animated.View>
               <Animated.View style={[styles.abs, vertical ? { top: -16, left: MID - 16 } : { left: -16, top: MID - 16 }, tickStyle]}>
                 <Tick size={32} mood="happy" />
@@ -449,6 +451,7 @@ export function TimelineView({ entries, completed, layers, scale, direction, wee
               live={!showNowButton}
               scale={scale}
               weekStart={weekStart}
+              h24={h24}
               layerId={layers[0]?.id}
               onAdd={onAdd}
               onOpenView={onOpenView}
@@ -486,6 +489,7 @@ type HudProps = {
   live: boolean;
   scale: Scale;
   weekStart: WeekStart;
+  h24: boolean;
   layerId: string | undefined;
   onAdd: Props['onAdd'];
   onOpenView: Props['onOpenView'];
@@ -494,7 +498,7 @@ type HudProps = {
 };
 
 /** The fixed pointer: a glowing line, the exact time under it, the zoom chip and Add. */
-function PointerHud({ c, vertical, at, mid, anchorTime, live, scale, weekStart, layerId, onAdd, onOpenView, onPickTime, onPointerDay }: HudProps) {
+function PointerHud({ c, vertical, at, mid, anchorTime, live, scale, weekStart, h24, layerId, onAdd, onOpenView, onPickTime, onPointerDay }: HudProps) {
   // Re-render only when the time under the pointer can have changed by a fraction of a slot, not every frame.
   const res = Math.max(SECOND, Math.min(HOUR, (APPROX_MS[scale.snap.unit] * scale.snap.step) / 5));
   const [raw, setRaw] = useState(() => anchorTime.get());
@@ -510,8 +514,8 @@ function PointerHud({ c, vertical, at, mid, anchorTime, live, scale, weekStart, 
   useEffect(() => onPointerDay(day), [day, onPointerDay]);
   const glow = useLoop(2400);
   const glowStyle = useAnimatedStyle(() => ({ opacity: 0.55 + 0.45 * glow.get() }));
-  const label = pointerLabel(time, scale.id);
-  const spoken = scale.snap.unit === 'day' || scale.snap.unit === 'month' ? dayFmt.format(time) : `${dayFmt.format(time)}, ${timeFmt.format(time)}`;
+  const label = pointerLabel(time, scale.id, h24);
+  const spoken = scale.snap.unit === 'day' || scale.snap.unit === 'month' ? dayFmt.format(time) : `${dayFmt.format(time)}, ${clockTime(time, h24)}`;
 
   return (
     <>
@@ -534,13 +538,13 @@ function PointerHud({ c, vertical, at, mid, anchorTime, live, scale, weekStart, 
         style={({ pressed }) => [
           styles.abs,
           styles.capsule,
-          vertical ? { top: at - 23, left: mid - 52, width: 104, height: 46 } : { left: at - 52, top: mid - 21, width: 104, height: 42 },
+          vertical ? { top: at - 23, left: mid - 56, width: 112, height: 46 } : { left: at - 56, top: mid - 21, width: 112, height: 42 },
           { backgroundColor: live ? c.accent : c.gold, boxShadow: c.raised },
           pressed && styles.pressed,
         ]}
       >
         {live && <Text style={[styles.capsuleTag, { color: c.accentInk }]}>NOW</Text>}
-        <Text numberOfLines={1} style={[styles.capsuleText, label.length > 6 && styles.capsuleLong, { color: live ? c.accentInk : c.edge }]}>
+        <Text numberOfLines={1} style={[styles.capsuleText, label.length > 8 ? styles.capsuleTiny : label.length > 6 && styles.capsuleLong, { color: live ? c.accentInk : c.edge }]}>
           {label}
         </Text>
       </Pressable>
@@ -581,6 +585,7 @@ type CardProps = {
   cardLen: number;
   isNext: boolean;
   now: number;
+  h24: boolean;
   onOpen: (entryId: string) => void;
   onToggleDone: (entry: Entry) => void;
   onMove: (entry: Entry, start: number, end: number | null, layerId: string) => void;
@@ -592,7 +597,7 @@ type CardProps = {
   outerPan: PanGesture;
 };
 
-function SpineCard({ entry, layer, c, vertical, compact, place, side, at, top, endAt, mid, cross, crossLen, cardLen, isNext, now, onOpen, onToggleDone, onMove, onLift, msPerPx, snap, outerPan }: CardProps) {
+function SpineCard({ entry, layer, c, vertical, compact, place, side, at, top, endAt, mid, cross, crossLen, cardLen, isNext, now, h24, onOpen, onToggleDone, onMove, onLift, msPerPx, snap, outerPan }: CardProps) {
   // Completing a card pops it (1 → 1.08 → 0.97 → 1); an active task's ring breathes (DESIGN.md §2).
   const pop = useSharedValue(1);
   const wasDone = useRef(entry.done);
@@ -655,9 +660,9 @@ function SpineCard({ entry, layer, c, vertical, compact, place, side, at, top, e
   const icon = entry.kind === 'task' ? layer.icon : KIND_ICONS[entry.kind];
   const rule = parseRepeat(entry.repeat);
   const xp = entryXp({ ...entry, done: true });
-  const when = clock24(entry.start);
+  const when = clockTime(entry.start, h24);
   const subtitle = entry.done ? `Done · +${xp} XP` : skipped ? 'Missed, no penalty' : isNext ? `Next · ${when}` : rule ? `${when} · ${repeatLabel(rule)}` : `${when} · +${xp} XP`;
-  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${timeFmt.format(entry.start)} to ${timeFmt.format(entry.end)}` : timeFmt.format(entry.start)}${entry.done ? ', done' : skipped ? ', missed' : isNext ? ', next up' : ''}`;
+  const label = `${entry.kind}, ${entry.title}, ${entry.end ? `${clockTime(entry.start, h24)} to ${clockTime(entry.end, h24)}` : clockTime(entry.start, h24)}${entry.done ? ', done' : skipped ? ', missed' : isNext ? ', next up' : ''}`;
 
   // The wire: from the spine at the entry's time, across the ruler, then along to the card if it was pushed.
   const spineEdge = mid + (side * SPINE) / 2;
@@ -743,9 +748,9 @@ function SpineCard({ entry, layer, c, vertical, compact, place, side, at, top, e
   );
 }
 
-function ClockText({ color }: { color: string }) {
+function ClockText({ color, h24 }: { color: string; h24: boolean }) {
   const now = useNow(1000);
-  return <Text numberOfLines={1} style={[styles.clock, { color }]}>{clock24(now, true)}</Text>;
+  return <Text numberOfLines={1} style={[styles.clock, { color }]}>{clockTime(now, h24, true)}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -778,7 +783,8 @@ const styles = StyleSheet.create({
   capsule: { borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   capsuleTag: { fontSize: 9, fontFamily: F.display, letterSpacing: 1.2, marginBottom: -3 },
   capsuleText: { fontSize: 24, fontFamily: F.display, letterSpacing: 0.5 },
-  capsuleLong: { fontSize: 18, letterSpacing: 0 },
+  capsuleLong: { fontSize: 19, letterSpacing: 0 },
+  capsuleTiny: { fontSize: 15, letterSpacing: 0 },
   add: { height: 46, borderRadius: 16, overflow: 'hidden' },
   addFill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2, paddingLeft: 10, paddingRight: 14 },
   addText: { fontSize: 16, fontFamily: F.display },

@@ -21,7 +21,7 @@ import { useProgress } from '@/features/game/useProgress';
 import { useFocusedByEntry } from '@/features/focus/data';
 import { useInbox } from '@/features/inbox/data';
 import { useReviewedDays } from '@/features/review/data';
-import { useSetting } from '@/features/settings/data';
+import { useClock24, useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { syncEntryNotifications } from '@/lib/notifications';
 import { Halftone } from '@/ui/Halftone';
@@ -45,6 +45,7 @@ export function TimelineScreen() {
   const narrow = useWindowDimensions().width < 520;
   const inboxCount = useInbox().length;
   const ws: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
+  const h24 = useClock24();
   const allLayers = useLayers();
   const entries = useEntries();
   const completed = useCompletedIds();
@@ -174,6 +175,7 @@ export function TimelineScreen() {
           scale={scale}
           direction={direction}
           weekStart={ws}
+          h24={h24}
           camera={{ anchorTime, following }}
           onAdd={openAdd}
           onOpen={(id) => router.push({ pathname: '/entry/[id]', params: { id } })}
@@ -212,8 +214,8 @@ export function TimelineScreen() {
         )}
       </View>
 
-      <ViewSheet open={viewOpen} layers={allLayers} direction={direction} scaleId={scaleId} onScale={setScaleId} onClose={() => setViewOpen(false)} />
-      <JumpSheet mode={jump} day={jump === 'time' ? floorUnit(jumpAt, 'day') : viewDay} at={jumpAt} today={today} weekStart={ws} sound={calm !== 'on'} onJump={jumpToTime} onClose={() => setJump(null)} />
+      <ViewSheet open={viewOpen} layers={allLayers} direction={direction} scaleId={scaleId} h24={h24} onScale={setScaleId} onClose={() => setViewOpen(false)} />
+      <JumpSheet mode={jump} day={jump === 'time' ? floorUnit(jumpAt, 'day') : viewDay} at={jumpAt} today={today} weekStart={ws} h24={h24} sound={calm !== 'on'} onJump={jumpToTime} onClose={() => setJump(null)} />
     </View>
   );
 }

@@ -21,6 +21,8 @@ type Props = {
   at: number;
   today: number;
   weekStart: WeekStart;
+  /** 24-hour wheels instead of 1–12 + AM/PM. */
+  h24: boolean;
   /** Sounds off in calm mode. */
   sound: boolean;
   onJump: (t: number) => void;
@@ -28,11 +30,12 @@ type Props = {
 };
 
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
+const HOURS_24 = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const HALVES = ['AM', 'PM'];
 
 /** Calendar (pick a day, from the title) or iPhone-style time wheels (dial the pointer's time); the timeline jumps there. */
-export function JumpSheet({ mode, day, at, today, weekStart, sound, onJump, onClose }: Props) {
+export function JumpSheet({ mode, day, at, today, weekStart, h24, sound, onJump, onClose }: Props) {
   const c = usePalette();
   return (
     <Modal visible={mode !== null} transparent animationType="fade" onRequestClose={onClose}>
@@ -41,7 +44,7 @@ export function JumpSheet({ mode, day, at, today, weekStart, sound, onJump, onCl
         <Pressable onPress={() => {}} accessible={false}>
           <Animated.View entering={ZoomIn.springify().damping(16)} style={[styles.card, { backgroundColor: c.panel, boxShadow: c.raised }]}>
             {mode === 'date' && <Calendar day={day} today={today} weekStart={weekStart} onPick={(d) => onJump(d === today ? Date.now() : d + 9 * HOUR)} />}
-            {mode === 'time' && <TimeWheels day={day} at={at} sound={sound} onPick={onJump} />}
+            {mode === 'time' && <TimeWheels day={day} at={at} h24={h24} sound={sound} onPick={onJump} />}
           </Animated.View>
         </Pressable>
       </Pressable>
@@ -107,17 +110,16 @@ function Calendar({ day, today, weekStart, onPick }: { day: number; today: numbe
   );
 }
 
-function TimeWheels({ day, at, sound, onPick }: { day: number; at: number; sound: boolean; onPick: (t: number) => void }) {
+function TimeWheels({ day, at, h24, sound, onPick }: { day: number; at: number; h24: boolean; sound: boolean; onPick: (t: number) => void }) {
   const c = usePalette();
   const [init] = useState(() => new Date(at));
-  const [hour, setHour] = useState((init.getHours() + 11) % 12); // index into HOURS (1..12)
+  const [hour, setHour] = useState(h24 ? init.getHours() : (init.getHours() + 11) % 12); // index into HOURS_24, or HOURS (1..12)
   const [minute, setMinute] = useState(init.getMinutes());
   const [half, setHalf] = useState(init.getHours() >= 12 ? 1 : 0);
   const onTick = () => tick(sound);
   const go = () => {
-    const h24 = ((hour + 1) % 12) + half * 12;
     const at = new Date(day);
-    at.setHours(h24, minute, 0, 0); // wall-clock time, right on DST days too
+    at.setHours(h24 ? hour : ((hour + 1) % 12) + half * 12, minute, 0, 0); // wall-clock time, right on DST days too
     onPick(at.getTime());
   };
 
@@ -126,10 +128,10 @@ function TimeWheels({ day, at, sound, onPick }: { day: number; at: number; sound
       <Text style={[styles.title, styles.center, { color: c.ink }]}>{new Date(day).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
       <View style={styles.wheels}>
         <View pointerEvents="none" style={[styles.band, { backgroundColor: c.chip }]} />
-        <Wheel items={HOURS} index={hour} onChange={setHour} onTick={onTick} label="Hour" width={70} />
+        <Wheel items={h24 ? HOURS_24 : HOURS} index={hour} onChange={setHour} onTick={onTick} label="Hour" width={70} />
         <Text style={[styles.colon, { color: c.ink }]}>:</Text>
         <Wheel items={MINUTES} index={minute} onChange={setMinute} onTick={onTick} label="Minute" width={70} />
-        <Wheel items={HALVES} index={half} onChange={setHalf} onTick={onTick} label="AM or PM" width={70} />
+        {!h24 && <Wheel items={HALVES} index={half} onChange={setHalf} onTick={onTick} label="AM or PM" width={70} />}
       </View>
       <Pressable accessibilityRole="button" onPress={go} style={({ pressed }) => [styles.go, { boxShadow: c.glow }, pressed && styles.pressed]}>
         <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.goFill}>

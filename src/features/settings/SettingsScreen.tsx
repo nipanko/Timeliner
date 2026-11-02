@@ -17,13 +17,14 @@ import { PALETTES, usePalette, type IconName, type Palette, type ThemePreference
 import { F } from '@/ui/type';
 
 import { BackupSection } from './BackupSection';
-import { setSetting, useSetting } from './data';
+import { setSetting, useClock24, useSetting } from './data';
 import { LayersSection } from './LayersSection';
 
 const APPEARANCES: [ThemePreference, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 const DIRECTIONS: [Direction, string][] = [['down', '↓'], ['up', '↑'], ['right', '→'], ['left', '←']];
 const WEEK_STARTS: [string, string][] = [['1', 'Mon'], ['0', 'Sun']];
 const CALM: [string, string][] = [['off', 'Off'], ['on', 'On']];
+const CLOCKS: [string, string][] = [['12', '12h'], ['24', '24h']];
 
 export function SettingsScreen() {
   const c = usePalette();
@@ -33,6 +34,7 @@ export function SettingsScreen() {
   const direction = useSetting<Direction>('direction', 'down');
   const weekStart = useSetting<string>('weekStart', '1');
   const calm = useSetting<string>('calm', 'off');
+  const clock = useClock24() ? '24' : '12';
   const allLayers = useLayers();
   const earned = p.badges.filter((b) => b.earned).length;
 
@@ -118,10 +120,11 @@ export function SettingsScreen() {
             c={c}
             icon="options-outline"
             title="Timeline"
-            summary={`Runs ${direction} · week from ${weekStart === '0' ? 'Sun' : 'Mon'} · calm ${calm}`}
+            summary={`Runs ${direction} · ${clock}-hour clock · week from ${weekStart === '0' ? 'Sun' : 'Mon'} · calm ${calm}`}
           >
             <View style={[styles.options, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
               <Option c={c} label="Direction" value={direction} choices={DIRECTIONS} onPick={(v) => setSetting('direction', v)} />
+              <Option c={c} label="Clock" value={clock} choices={CLOCKS} onPick={(v) => setSetting('clock', v)} />
               <Option c={c} label="Week starts" value={weekStart} choices={WEEK_STARTS} onPick={(v) => setSetting('weekStart', v)} />
               <Option c={c} label="Calm mode" value={calm} choices={CALM} onPick={(v) => setSetting('calm', v)} />
             </View>

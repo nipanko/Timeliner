@@ -10,7 +10,8 @@ import { addUnit, floorUnit, HOUR, MINUTE, type WeekStart } from '@/core/time/un
 import { saveEntry, useCompletedIds, useEntries, useLayers, type Entry } from '@/features/entries/data';
 import { useFocusedByEntry } from '@/features/focus/data';
 import { useProgress } from '@/features/game/useProgress';
-import { useSetting } from '@/features/settings/data';
+import { clockTime } from '@/core/timeline/ticks';
+import { useClock24, useSetting } from '@/features/settings/data';
 import { useNow } from '@/hooks/useNow';
 import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
 import { LAYER_COLORS, usePalette, type IconName } from '@/ui/theme';
@@ -26,6 +27,7 @@ export function ReviewScreen() {
   const c = usePalette();
   const now = useNow(60_000);
   const weekStart: WeekStart = useSetting<string>('weekStart', '1') === '0' ? 0 : 1;
+  const h24 = useClock24();
   const entries = useEntries();
   const completed = useCompletedIds();
   const layers = useLayers();
@@ -166,7 +168,7 @@ export function ReviewScreen() {
 
       <Reveal index={3}>
         <View style={[styles.card, { backgroundColor: LAYER_COLORS.yellow.fill, boxShadow: c.raisedSm }]}>
-          <Text style={[styles.cardLabel, { color: LAYER_COLORS.yellow.ink }]}>TOMORROW&apos;S FIRST TASK · 9:00 AM, I WILL…</Text>
+          <Text style={[styles.cardLabel, { color: LAYER_COLORS.yellow.ink }]}>TOMORROW&apos;S FIRST TASK · {clockTime(tomorrow + 9 * HOUR, h24)}, I WILL…</Text>
           <TextInput
             value={firstTask}
             onChangeText={setFirstTask}

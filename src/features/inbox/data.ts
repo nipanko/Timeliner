@@ -20,3 +20,8 @@ export async function addToInbox(title: string) {
 export async function removeFromInbox(id: string) {
   await getDb().update(inbox).set({ deletedAt: Date.now() }).where(eq(inbox.id, id));
 }
+
+/** Undo a delete: removal is only a tombstone, so the item comes back as it was. */
+export async function restoreToInbox(id: string) {
+  await getDb().update(inbox).set({ deletedAt: null }).where(eq(inbox.id, id));
+}

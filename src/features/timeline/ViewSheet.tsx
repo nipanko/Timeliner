@@ -19,10 +19,10 @@ const DIRECTIONS: [Direction, IconName, string][] = [
 
 const ZOOMS: Record<ScaleId, string> = { sec: 'Sec', min: 'Min', hour: 'Hour', day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 
-type Props = { open: boolean; layers: readonly Layer[]; direction: Direction; scaleId: ScaleId; onScale: (id: ScaleId) => void; onClose: () => void };
+type Props = { open: boolean; layers: readonly Layer[]; direction: Direction; scaleId: ScaleId; h24: boolean; onScale: (id: ScaleId) => void; onClose: () => void };
 
-/** Timeline view options in one place: zoom, which layers show, and which way time runs. */
-export function ViewSheet({ open, layers, direction, scaleId, onScale, onClose }: Props) {
+/** Timeline view options in one place: zoom, which layers show, which way time runs, and the clock. */
+export function ViewSheet({ open, layers, direction, scaleId, h24, onScale, onClose }: Props) {
   const c = usePalette();
   const visible = layers.filter((l) => l.visible).length;
   const toggle = (l: Layer) => {
@@ -90,6 +90,25 @@ export function ViewSheet({ open, layers, direction, scaleId, onScale, onClose }
                   >
                     <Ionicons name={icon} size={16} color={on ? c.accentInk : c.ink} />
                     <Text style={[styles.optionText, { color: on ? c.accentInk : c.ink }]}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.section, { color: c.muted }]}>CLOCK</Text>
+            <View style={[styles.segmented, { backgroundColor: c.chip }]}>
+              {(['12', '24'] as const).map((v) => {
+                const on = (v === '24') === h24;
+                return (
+                  <Pressable
+                    key={v}
+                    accessibilityRole="radio"
+                    aria-checked={on}
+                    accessibilityLabel={v === '12' ? '12-hour clock with AM and PM' : '24-hour clock'}
+                    onPress={() => setSetting('clock', v)}
+                    style={[styles.zoom, on && { backgroundColor: c.accent, boxShadow: c.selected }]}
+                  >
+                    <Text style={[styles.optionText, { color: on ? c.accentInk : c.ink }]}>{v === '12' ? '12-hour · 9:05 PM' : '24-hour · 21:05'}</Text>
                   </Pressable>
                 );
               })}

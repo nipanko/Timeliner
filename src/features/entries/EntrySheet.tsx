@@ -9,6 +9,7 @@ import { formatRepeat, parseRepeat, repeatLabel } from '@/core/entries/repeat';
 import { APPROX_MS, MINUTE } from '@/core/time/units';
 import { getScale, SCALES, type ScaleId } from '@/core/timeline/scales';
 import { removeFromInbox } from '@/features/inbox/data';
+import { useClock24 } from '@/features/settings/data';
 import { KIND_ICONS, usePalette, type IconName, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
@@ -62,8 +63,8 @@ function fromEntry(e: Entry): Form {
   return { kind: e.kind, title: e.title, granularity: e.granularity, at: e.start, lengthMin, layerId: e.layerId, repeat: e.repeat };
 }
 
-function whenLabel(g: Granularity, t: number): string {
-  if (g === 'moment') return new Date(t).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+function whenLabel(g: Granularity, t: number, h24: boolean): string {
+  if (g === 'moment') return new Date(t).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: !h24 });
   if (g === 'day') return new Date(t).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
   if (g === 'week') return `Week of ${new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
   if (g === 'month') return new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -82,10 +83,11 @@ function EntryForm({ id, done, initial, layers, fromInbox }: { id: string | null
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (patch: Partial<Form>) => setForm({ ...form, ...patch });
 
+  const h24 = useClock24();
   const granularity = form.kind === 'reminder' ? 'moment' : form.granularity;
   const { start, end } = entryTiming(form.kind, granularity, form.at, form.lengthMin);
   const layer = layers.find((l) => l.id === form.layerId) ?? layers[0];
-  const when = whenLabel(granularity, start);
+  const when = whenLabel(granularity, start, h24);
   const title = form.title.trim();
   const lead = granularity === 'moment' ? `At ${when}` : granularity === 'week' ? `In the ${when.replace('Week', 'week')}` : `${granularity === 'day' ? 'On' : 'In'} ${when}`;
   // Notes don't repeat; weeks, months and years are goals, not routines.

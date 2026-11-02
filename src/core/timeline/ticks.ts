@@ -43,24 +43,26 @@ function next(t: number, { unit, step }: Interval, weekStart: WeekStart): number
 const pad = (n: number) => String(n).padStart(2, '0');
 const part = (t: number, options: Intl.DateTimeFormatOptions, locale?: string) => new Intl.DateTimeFormat(locale, options).format(t);
 
-/** "21:05" or "21:05:30": the timeline's own 24-hour clock, the same in every locale. */
-export function clock24(t: number, seconds = false): string {
+/** The app's clock, set in Settings: "21:05" (24-hour) or "9:05 PM" (12-hour), optionally with seconds. */
+export function clockTime(t: number, h24: boolean, seconds = false): string {
   const d = new Date(t);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}${seconds ? `:${pad(d.getSeconds())}` : ''}`;
+  const rest = `${pad(d.getMinutes())}${seconds ? `:${pad(d.getSeconds())}` : ''}`;
+  return h24 ? `${pad(d.getHours())}:${rest}` : `${d.getHours() % 12 || 12}:${rest} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
 }
 
 /**
- * A ruler label in two halves, one each side of the spine: hours | minutes when zoomed in (the "h | m" ruler),
- * weekday | date, month | date, month | year further out.
+ * A ruler label in two halves, one each side of the spine: hours | minutes when zoomed in (the "h | m" ruler;
+ * "9 PM | 00" on a 12-hour clock), weekday | date, month | date, month | year further out.
  */
-export function rulerLabel(t: number, scale: ScaleId, locale?: string): [string, string] {
+export function rulerLabel(t: number, scale: ScaleId, h24: boolean, locale?: string): [string, string] {
   const d = new Date(t);
   switch (scale) {
     case 'sec':
-      return [clock24(t), pad(d.getSeconds())];
+      // The 12-hour half drops AM/PM here to fit; the pointer and the NOW pill still show it.
+      return [h24 ? clockTime(t, true) : `${d.getHours() % 12 || 12}:${pad(d.getMinutes())}`, pad(d.getSeconds())];
     case 'min':
     case 'hour':
-      return [pad(d.getHours()), pad(d.getMinutes())];
+      return [h24 ? pad(d.getHours()) : `${d.getHours() % 12 || 12} ${d.getHours() < 12 ? 'AM' : 'PM'}`, pad(d.getMinutes())];
     case 'day':
       return [part(t, { weekday: 'short' }, locale).toUpperCase(), String(d.getDate())];
     case 'week':
@@ -73,9 +75,9 @@ export function rulerLabel(t: number, scale: ScaleId, locale?: string): [string,
 }
 
 /** What the pointer reads at each zoom: a time, a day ("Tue 3") or a month ("Mar 2027"). */
-export function pointerLabel(t: number, scale: ScaleId, locale?: string): string {
-  if (scale === 'sec') return clock24(t, true);
+export function pointerLabel(t: number, scale: ScaleId, h24: boolean, locale?: string): string {
+  if (scale === 'sec') return clockTime(t, h24, true);
   if (scale === 'week' || scale === 'month') return `${part(t, { weekday: 'short' }, locale)} ${new Date(t).getDate()}`;
   if (scale === 'year') return part(t, { month: 'short', year: 'numeric' }, locale);
-  return clock24(t);
+  return clockTime(t, h24);
 }
