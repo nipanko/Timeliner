@@ -51,7 +51,7 @@ export function useProgress() {
       xp,
       level: levelFor(xp),
       streak: streak(scored.filter((x) => x.done && (x.kind === 'task' || x.kind === 'todo')).map((x) => x.start), now),
-      badges: badges(stats),
+      badges: badges(stats, levelFor(xp).level),
       focusedHours: stats.focusedHours,
     };
   }, [e.data, e.updatedAt, s.data, s.updatedAt, d.data, d.updatedAt, m.data, m.updatedAt, c.data, c.updatedAt, now]);

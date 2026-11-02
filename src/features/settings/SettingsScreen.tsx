@@ -62,7 +62,7 @@ export function SettingsScreen() {
           </View>
           <View style={styles.stats}>
             <Stat c={c} icon="flame" value={String(p.streak.days)} label="Day streak" />
-            <Stat c={c} icon="ribbon" value={`${earned}/${p.badges.length}`} label="Badges" />
+            <Stat c={c} icon="albums" value={`${earned}/${p.badges.length}`} label="Cards" />
             <Stat c={c} icon="timer" value={p.focusedHours < 10 ? p.focusedHours.toFixed(1) : String(Math.round(p.focusedHours))} label="Hours focused" />
           </View>
         </View>

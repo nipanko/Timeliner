@@ -6,13 +6,17 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **GitHub:** https://github.com/nipanko/Timeliner (private; `origin`, `main` pushed 1 Nov). CI runs on every push / PR.
 - **Phase:** 1, local MVP (started 30 Oct). Phase 0 leftovers stay with Nipanko: name check, domain, landing page.
 - **Where the code is:** `main` has scaffold + slices 1–8, the pro look, motion polish, drag-to-reschedule, pinch zoom, calendar/clock jump, Inbox, Tick the mascot, drag across lanes, the web app (installable, offline), GitHub CI and backup export/restore (all merged 1 Nov). 69 tests, typecheck and lint green.
-- **Resume with:** v2 slice 1 (arcade look, spine timeline, fixed add-pointer) and Tick's voice merged and deployed (2 Nov). Next: v2 slice 2, collectible cards (from badges/milestones/levels) + card reveal + daily quests. Design canvas: https://claude.ai/artifact/976TMR7ze4L7av8xqyZjLi Accounts + sync wait for email setup (`accounts/auth`, `sync/engine`; add `completions` to sync when merging).
+- **Resume with:** branch `game/cards` (v2 slice 2: collectible cards + reveal) awaits Nipanko's merge OK. Next: daily quests (v2 slice 3). Design canvas: https://claude.ai/artifact/976TMR7ze4L7av8xqyZjLi Accounts + sync wait for email setup (`accounts/auth`, `sync/engine`; add `completions` to sync when merging).
 - **Still open from slices 2–3:** windowed DB query once entries reach thousands (`shortcut:` in `features/entries/data.ts`).
 - **Decisions made:** layers = colours on a centre spine (v2, 2 Nov; lanes before); timeline clock is 24-hour; 4 directions (radial later); phones stay portrait, horizontal is a direction setting; minimum age 13 with parental consent for 13–17; web = single-page app with isolation headers.
 - **Nipanko's to-dos:** connect Cloudflare Pages; 2-factor on GitHub + Cloudflare; decide domain and LAUNCH.md §10 choices; confirm "what makes it different" (PRODUCT.md); check the name (Play Store, App Store, IP India); buy domain; create the private GitHub repo so CI can run.
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-02 (24)
+- v2 slice 2 on branch `game/cards`: badges became a numbered deck of 17 collectible cards with rarity (6 new: First step, Night owl, Ten down, Century, Level 5, Level 10; old badge ids kept so earned stays earned). `badges(stats, level)`, stats gain `done` and `lateTasks`; tests for numbering, rarity order, night owl. `CollectCard` (owned art + shine, locked rule + progress), Journey's Badges tab → Cards (grid, closest next card, `/journey?tab=cards`), Settings stat says Cards. `CardReveal` replaces the "Badge unlocked" toast (queued, rays, confetti, float; still with reduce motion / calm).
+- Checked on the web build at 390 px: completing the first task played the reveal (Common · Card 01 · First step · 1/17), See all cards opened the grid with the card owned. 83 tests, typecheck and lint green.
+
 ### 2026-11-02 (23)
 - Nipanko redesigned the Timeline on a design canvas (inspiration: collectible card grid, centre-spine timelines, an h|m ruler, an arcade game menu) and asked for a game-first, uncluttered, animated UI with a matching font, no week/date rows at the top, and setting time precisely by themselves. Built v2 slice 1 on branch `ui/timeline-v2` (on top of `ritual/daily`).
 - Core (`core/timeline/spine.ts`, tests): `spineSides` (alternate per day, stable while scrolling), `stackCards` (no overlaps, elbow wires), `snapTo` (round / ceil on the local calendar), `bucketize` + `BUCKET_ZOOM`; `ticks.ts`: `clock24`, `rulerLabel` (two halves), `pointerLabel`. Old lane layout (`layout.ts`) and the week strip deleted; hour zoom now snaps to 5 min.

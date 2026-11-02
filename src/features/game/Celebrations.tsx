@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -23,16 +24,17 @@ import { F } from '@/ui/type';
 
 import { useSetting } from '@/features/settings/data';
 
+import { CardReveal } from './CardReveal';
 import { Tick } from './Tick';
 import { useProgress } from './useProgress';
 
-type Toast = { id: number; text: string; badge: boolean };
+type Toast = { id: number; text: string };
 const haptic = (run: () => Promise<void>) => {
   if (Platform.OS !== 'web') run().catch(() => {});
 };
 let nextId = 1;
 
-/** Plays the game's juice for any gain, wherever it happened: +XP, confetti, level-up, badges (DESIGN.md §2). */
+/** Plays the game's juice for any gain, wherever it happened: +XP, confetti, level-up, new cards (DESIGN.md §2). */
 export function Celebrations() {
   const p = useProgress();
   const c = usePalette();
@@ -44,6 +46,8 @@ export function Celebrations() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [burst, setBurst] = useState(0);
+  // New cards wait their turn; one reveal at a time.
+  const [reveals, setReveals] = useState<string[]>([]);
 
   useEffect(() => {
     if (!p.ready) return;
@@ -59,22 +63,28 @@ export function Celebrations() {
           if (!calm) haptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
           continue;
         }
+        if (ev.type === 'badge') {
+          setReveals((r) => [...r, ev.id]);
+          if (!calm) haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
+          continue;
+        }
         const id = nextId++;
-        const name = ev.type === 'badge' ? (p.badges.find((b) => b.id === ev.id)?.name ?? 'New badge') : '';
-        setToasts((t) => [...t, { id, text: ev.type === 'xp' ? `+${ev.amount} XP` : `Badge unlocked · ${name}`, badge: ev.type === 'badge' }]);
-        setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ev.type === 'xp' ? 1600 : 2600);
-        if (ev.type === 'xp') setBurst((b) => b + 1);
+        setToasts((t) => [...t, { id, text: `+${ev.amount} XP` }]);
+        setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 1600);
+        setBurst((b) => b + 1);
         if (!calm) haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
       }
     }, 120);
   }, [p, calm]);
+
+  const reveal = p.badges.find((b) => b.id === reveals[0]);
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.passThrough]}>
       {!reduceMotion && burst > 0 && <Confetti key={burst} originY={0.78} />}
 
       <View style={[styles.toastStack, styles.noTouch, { bottom: insets.bottom + 96 }]}>
-        {toasts.filter((t) => !t.badge).map((t) => (
+        {toasts.map((t) => (
           <Animated.View key={t.id} entering={FadeInDown.springify().damping(14)} exiting={FadeOutUp.duration(300)} style={[styles.xpToast, { boxShadow: c.glow }]}>
             <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.xpFill}>
               <Ionicons name="flash" size={15} color={c.accentInk} />
@@ -84,14 +94,24 @@ export function Celebrations() {
         ))}
       </View>
 
-      <View style={[styles.badgeStack, styles.noTouch, { top: insets.top + 10 }]}>
-        {toasts.filter((t) => t.badge).map((t) => (
-          <Animated.View key={t.id} entering={FadeInDown.springify()} exiting={FadeOutUp} style={[styles.badgeToast, { backgroundColor: c.panel, boxShadow: c.raised }]}>
-            <Ionicons name="ribbon" size={18} color={LAYER_COLORS.yellow.fill} />
-            <Text style={[styles.badgeText, { color: c.ink }]}>{t.text}</Text>
-          </Animated.View>
-        ))}
-      </View>
+
+      {reveal && (
+        <>
+          <CardReveal
+            key={reveal.id}
+            card={reveal}
+            owned={p.badges.filter((b) => b.earned).length}
+            total={p.badges.length}
+            still={reduceMotion}
+            onClose={() => setReveals((r) => r.slice(1))}
+            onSeeAll={() => {
+              setReveals([]);
+              router.push({ pathname: '/journey', params: { tab: 'cards' } });
+            }}
+          />
+          {!reduceMotion && <Confetti key={`c${reveal.id}`} originY={0.4} pieces={24} />}
+        </>
+      )}
 
       {levelUp !== null && (
         <Animated.View entering={FadeIn} exiting={FadeOut} style={[StyleSheet.absoluteFill, styles.backdrop]}>
@@ -155,9 +175,6 @@ const styles = StyleSheet.create({
   xpToast: { borderRadius: 999, overflow: 'hidden' },
   xpFill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 40 },
   xpText: { fontSize: 17, fontFamily: F.display, fontVariant: ['tabular-nums'] },
-  badgeStack: { position: 'absolute', left: 16, right: 16, alignItems: 'center', gap: 8 },
-  badgeToast: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, height: 46, borderRadius: 16 },
-  badgeText: { fontSize: 14, fontFamily: F.semi },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   levelCard: { width: 280, borderRadius: 28, padding: 24, alignItems: 'center', gap: 6 },
   levelLabel: { fontSize: 12, fontFamily: F.bold, letterSpacing: 3 },

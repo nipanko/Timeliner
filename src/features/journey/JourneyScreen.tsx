@@ -1,21 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { useEntries, useLayers, type Entry } from '@/features/entries/data';
+import { CollectCard } from '@/features/game/CollectCard';
 import { useProgress } from '@/features/game/useProgress';
 import { Reveal, ScrollScreen } from '@/ui/ScrollScreen';
-import { usePalette, type IconName, type Palette } from '@/ui/theme';
+import { usePalette, type Palette } from '@/ui/theme';
 import { F } from '@/ui/type';
 
 import { addMilestone, deleteMilestone, setMilestoneReached, useMilestones, type Milestone } from './data';
 
 const isGoal = (e: Entry) => e.kind === 'task' && (e.granularity === 'month' || e.granularity === 'year');
-
-const badgeIcon = (id: string): IconName =>
-  id.startsWith('streak') ? 'flame' : id.startsWith('focus') ? 'timer' : ({ honest: 'checkmark-done', early: 'sunny', comeback: 'refresh', fresh: 'sparkles' } as Record<string, IconName>)[id] ?? 'ribbon';
 
 /** Goals branch off your timeline; milestones are their stops (DESIGN.md §3.5, RESEARCH.md #21). */
 export function JourneyScreen() {
@@ -24,14 +21,17 @@ export function JourneyScreen() {
   const layers = useLayers();
   const all = useMilestones();
   const { badges } = useProgress();
-  const [tab, setTab] = useState<'goals' | 'badges'>('goals');
+  // `/journey?tab=cards` opens the collection (the card reveal links here).
+  const [tab, setTab] = useState<'goals' | 'cards'>(useLocalSearchParams<{ tab?: string }>().tab === 'cards' ? 'cards' : 'goals');
+  const cardW = Math.floor((Math.min(useWindowDimensions().width, 720) - 32 - 20) / 3);
+  const closest = badges.filter((b) => !b.earned).sort((a, b) => b.progress - a.progress)[0];
   const goals = entries.filter(isGoal).sort((a, b) => a.start - b.start);
   const earned = badges.filter((b) => b.earned).length;
 
   return (
-    <ScrollScreen title="Journey" subtitle={`${goals.length} goal${goals.length === 1 ? '' : 's'} · ${earned} of ${badges.length} badges`}>
+    <ScrollScreen title="Journey" subtitle={`${goals.length} goal${goals.length === 1 ? '' : 's'} · ${earned} of ${badges.length} cards`}>
       <View style={[styles.tabs, { backgroundColor: c.panel, boxShadow: c.raisedSm }]}>
-        {(['goals', 'badges'] as const).map((t) => (
+        {(['goals', 'cards'] as const).map((t) => (
           <Pressable
             key={t}
             accessibilityRole="button"
@@ -39,8 +39,8 @@ export function JourneyScreen() {
             onPress={() => setTab(t)}
             style={({ pressed }) => [styles.tab, tab === t && { backgroundColor: c.accent, boxShadow: c.selected }, pressed && styles.pressed]}
           >
-            <Ionicons name={t === 'goals' ? 'flag' : 'ribbon'} size={15} color={tab === t ? c.accentInk : c.muted} />
-            <Text style={[styles.tabText, { color: tab === t ? c.accentInk : c.muted }]}>{t === 'goals' ? 'Goals' : 'Badges'}</Text>
+            <Ionicons name={t === 'goals' ? 'flag' : 'albums'} size={15} color={tab === t ? c.accentInk : c.muted} />
+            <Text style={[styles.tabText, { color: tab === t ? c.accentInk : c.muted }]}>{t === 'goals' ? 'Goals' : 'Cards'}</Text>
           </Pressable>
         ))}
       </View>
@@ -63,36 +63,20 @@ export function JourneyScreen() {
           </Pressable>
         </>
       ) : (
-        <View style={styles.grid}>
-          {badges.map((b, i) => (
-            <View key={b.id} style={styles.badgeCell}>
-              <Reveal index={i}>
-                <View
-                  style={[styles.badge, { backgroundColor: c.panel, boxShadow: b.earned ? c.selected : c.raisedSm }]}
-                  accessible
-                  accessibilityLabel={`${b.name}, ${b.desc}, ${b.earned ? 'earned' : `${Math.round(b.progress * 100)} percent`}`}
-                >
-                  {b.earned ? (
-                    <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.coin, { boxShadow: c.glow }]}>
-                      <Ionicons name={badgeIcon(b.id)} size={24} color={c.accentInk} />
-                    </LinearGradient>
-                  ) : (
-                    <View style={[styles.coin, { backgroundColor: c.chip }]}>
-                      <Ionicons name={badgeIcon(b.id)} size={22} color={c.muted} />
-                    </View>
-                  )}
-                  <Text style={[styles.badgeName, { color: c.ink }]}>{b.name}</Text>
-                  <Text style={[styles.badgeDesc, { color: c.muted }]}>{b.desc}</Text>
-                  {!b.earned && (
-                    <View style={[styles.track, { backgroundColor: c.chip }]}>
-                      <View style={[styles.fill, { width: `${b.progress * 100}%`, backgroundColor: c.accentText }]} />
-                    </View>
-                  )}
-                </View>
+        <>
+          {closest && (
+            <Text style={[styles.empty, { color: c.muted }]}>
+              Closest next card: <Text style={{ color: c.ink }}>{closest.name}</Text> · {closest.desc} ({Math.round(closest.progress * 100)}%)
+            </Text>
+          )}
+          <View style={styles.grid}>
+            {badges.map((b, i) => (
+              <Reveal key={b.id} index={i}>
+                <CollectCard card={b} width={cardW} c={c} />
               </Reveal>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        </>
       )}
     </ScrollScreen>
   );
@@ -121,7 +105,7 @@ function GoalCard({ goal, stops, color, c }: { goal: Entry; stops: Milestone[]; 
       <View style={[styles.track, { backgroundColor: c.chip }]}>
         <View style={[styles.fill, { width: `${stops.length ? (reached / stops.length) * 100 : 0}%`, backgroundColor: color }]} />
       </View>
-      <Text style={[styles.badgeDesc, { color: c.muted }]}>{stops.length ? `${reached} of ${stops.length} milestones` : 'No milestones yet'}</Text>
+      <Text style={[styles.goalMeta, { color: c.muted }]}>{stops.length ? `${reached} of ${stops.length} milestones` : 'No milestones yet'}</Text>
 
       <View style={[styles.branch, { borderLeftColor: color }]}>
         {stops.map((m) => {
@@ -175,6 +159,7 @@ const styles = StyleSheet.create({
   goalWhen: { fontSize: 11, fontFamily: F.bold, letterSpacing: 1 },
   goalTitle: { fontSize: 20, fontFamily: F.display },
   track: { height: 8, borderRadius: 5, overflow: 'hidden' },
+  goalMeta: { fontSize: 11, fontFamily: F.text },
   fill: { height: '100%', borderRadius: 5 },
   branch: { borderLeftWidth: 3, marginLeft: 10, paddingLeft: 4, gap: 2 },
   stopRow: { flexDirection: 'row', alignItems: 'center' },
@@ -186,11 +171,6 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row', gap: 8 },
   input: { flex: 1, height: 44, borderRadius: 14, paddingHorizontal: 12, fontSize: 14, fontFamily: F.text },
   addButton: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  badgeCell: { flexGrow: 1, flexBasis: '30%' },
-  badge: { borderRadius: 20, padding: 12, alignItems: 'center', gap: 5 },
-  coin: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
-  badgeName: { fontSize: 12.5, fontFamily: F.bold, textAlign: 'center' },
-  badgeDesc: { fontSize: 11, fontFamily: F.text, textAlign: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, rowGap: 14 },
   pressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
 });

@@ -6,7 +6,8 @@
 > - Type: **Lilita One** (chunky, rounded, arcade) for titles and numbers, **Nunito** 600–800 for everything you read; both OFL, bundled. `F.display` / `F.text|semi|bold` in `src/ui/type.ts`; no negative tracking on Lilita.
 > - **Timeline v2:** title = the day under the pointer (TODAY / TOMORROW / weekday, tap = calendar) · level ring + streak flame · Inbox. Tick's line sits in a slim bar. Then one spine down the middle with a two-half ruler ("21 | 00"), lit lime→mint behind now; cards on both sides; a purple day pill at midnight; Tick on the spine at now with a live NOW clock pill. **The pointer** is a fixed glowing line with the exact time (gold; lime with "NOW" while following the clock), the zoom chip on its left (opens View: zoom, layers, direction) and **Add** on its right. No add button in the tab bar any more.
 > - Game cues on cards: open cards show their XP ("13:20 · +15 XP"), done cards "Done · +15 XP", next up pulses, an active task breathes, a missed task is a dashed grey card ("Missed, no penalty").
-> - Coming next (v2 slice 2): collectible cards for milestones, streaks and levels, the card reveal moment, daily quests.
+> - **Collectible cards (v2 slice 2):** the badges became a numbered deck of 17 (`core/game/badges.ts`: common → rare → epic → legendary, earned only by real effort: first task, early / late tasks, streaks, focus hours, honest planning, tasks done, levels 5 and 10). Each card is Tick in an outfit (sprout, sun, moon, flame, star, flag, bolt, headphones, clock, trophy, crown) on its own candy colour with an ink outline and a shine sweep (`CollectCard`). Locked cards are dashed with "?", the rule and a progress bar. Journey → Cards shows the grid and the closest next card. A new card plays the **reveal** (`CardReveal`): blue screen, spinning light rays, confetti, the card floating in, "ADD TO COLLECTION" / "See all cards".
+> - Coming next: daily quests.
 
 **v0.3 notes (31 Oct – 1 Nov), kept as history:**
 
