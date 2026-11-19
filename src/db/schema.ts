@@ -108,3 +108,25 @@ export const completions = sqliteTable('completions', {
   updatedAt: changed(),
   deletedAt: tombstone(),
 });
+
+/**
+ * The Board (a free-form canvas): one row per thing on it. Positions are world units (px at zoom 1).
+ * `points`: JSON [x, y, …] for pen strokes, lines and arrows (relative to x, y). `image`: a data URL, so pictures
+ * live in the same local database as everything else.
+ */
+export const boardItems = sqliteTable('board_items', {
+  id: text().primaryKey(),
+  kind: text().$type<'note' | 'text' | 'rect' | 'ellipse' | 'arrow' | 'line' | 'pen' | 'image'>().notNull(),
+  x: integer().notNull(),
+  y: integer().notNull(),
+  w: integer().notNull(),
+  h: integer().notNull(),
+  color: text().notNull(),
+  text: text(),
+  points: text(),
+  image: text(),
+  z: integer().notNull(),
+  createdAt: integer().notNull(),
+  updatedAt: changed(),
+  deletedAt: tombstone(),
+});

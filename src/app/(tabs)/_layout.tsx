@@ -22,6 +22,9 @@ export default function TabsLayout() {
           <TabTrigger name="index" href="/" asChild>
             <TabButton icon="git-network" label="Timeline" />
           </TabTrigger>
+          <TabTrigger name="board" href="/board" asChild>
+            <TabButton icon="easel" label="Board" />
+          </TabTrigger>
           <TabTrigger name="journey" href="/journey" asChild>
             <TabButton icon="trophy" label="Journey" />
           </TabTrigger>
