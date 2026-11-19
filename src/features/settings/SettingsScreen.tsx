@@ -19,6 +19,7 @@ import { F } from '@/ui/type';
 import { AccountSection } from '@/features/account/AccountSection';
 
 import { BackupSection } from './BackupSection';
+import { DataFolder } from './DataFolder';
 import { setSetting, useClock24, useSetting } from './data';
 import { LayersSection } from './LayersSection';
 
@@ -139,6 +140,7 @@ export function SettingsScreen() {
         <Text style={[styles.section, { color: c.muted }]}>ACCOUNT</Text>
         <AccountSection />
         <Text style={[styles.section, styles.sectionGap, { color: c.muted }]}>YOUR DATA</Text>
+        <DataFolder />
         <BackupSection />
       </Reveal>
 

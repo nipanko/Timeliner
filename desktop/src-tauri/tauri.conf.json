@@ -3,18 +3,30 @@
   "productName": "TIMELINER",
   "version": "1.0.0",
   "identifier": "com.triedindie.timeliner",
-  "build": { "frontendDist": "../../dist" },
+  "build": {
+    "frontendDist": "../../dist"
+  },
   "app": {
-    "windows": [{ "label": "main", "title": "TIMELINER", "width": 1280, "height": 860, "minWidth": 380, "minHeight": 600 }],
+    "windows": [],
     "security": {
       "csp": null,
-      "headers": { "Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Embedder-Policy": "require-corp" }
-    }
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ],
     "publisher": "Tried Indie"
   }
 }

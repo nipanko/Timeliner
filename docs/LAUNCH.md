@@ -197,7 +197,7 @@ Nipanko's choices: **web first, Android right after; accounts + sync in v1; full
 
 ## 12. Windows desktop app (personal use, 19 Nov)
 
-`desktop/` wraps the web build in **Tauri** (Rust + Windows' own Edge WebView2): installer ≈ 5 MB, app ≈ 22 MB. Data lives in `%LOCALAPPDATA%\com.triedindie.timeliner` and survives restarts and reinstalls (uninstalling may offer to delete it). One window at a time (single-instance plugin), because the on-device database allows one open copy.
+`desktop/` wraps the web build in **Tauri** (Rust + Windows' own Edge WebView2): installer ≈ 5 MB, app ≈ 22 MB. All data (tasks, the Board and its pictures, inside one database) lives in a **data folder**: by default `data` next to the installed app; **Settings › Your data › Data folder** picks another one (the app copies the data there and restarts). The choice is kept in `%APPDATA%\com.triedindie.timeliner\location.json`. The Board downloads web pictures through the app itself (`fetch_image`), so they stay offline. One window at a time (single-instance plugin), because the on-device database allows one open copy.
 
 Rebuild after app changes (no Visual Studio needed; uses Rust's GNU toolchain + the portable WinLibs MinGW from winget):
 1. `npm run build:web` (repo root)
