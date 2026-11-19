@@ -194,3 +194,14 @@ Nipanko's choices: **web first, Android right after; accounts + sync in v1; full
 4. **Version 1.0.0:** version shown in Settings → About, a short changelog.
 5. **Beta kit:** a one-page test checklist and an in-app "Send feedback" link for 5–10 friends.
 6. **Android:** EAS config (`eas.json`, app ids), a development build for Nipanko's phone, fix device-only issues, then a Play internal test.
+
+## 12. Windows desktop app (personal use, 19 Nov)
+
+`desktop/` wraps the web build in **Tauri** (Rust + Windows' own Edge WebView2): installer ≈ 5 MB, app ≈ 22 MB. Data lives in `%LOCALAPPDATA%\com.triedindie.timeliner` and survives restarts and reinstalls (uninstalling may offer to delete it). One window at a time (single-instance plugin), because the on-device database allows one open copy.
+
+Rebuild after app changes (no Visual Studio needed; uses Rust's GNU toolchain + the portable WinLibs MinGW from winget):
+1. `npm run build:web` (repo root)
+2. in `desktop/`: `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu npx tauri build` with the WinLibs `mingw64/bin` and `~/.cargo/bin` on PATH
+3. installer: `desktop/src-tauri/target/release/bundle/nsis/TIMELINER_1.0.0_x64-setup.exe` (copied to `release/`, git-ignored)
+
+The installer is unsigned, so Windows SmartScreen asks once: *More info → Run anyway*.

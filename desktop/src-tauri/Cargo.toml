@@ -1,0 +1,13 @@
+[package]
+name = "timeliner"
+version = "1.0.0"
+description = "TIMELINER for Windows"
+authors = ["Tried Indie"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-single-instance = "2"

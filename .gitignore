@@ -12,3 +12,7 @@ web-build/
 .DS_Store
 expo-env.d.ts
 coverage/
+release/
+desktop/node_modules/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
