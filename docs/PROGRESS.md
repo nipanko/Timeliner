@@ -13,6 +13,9 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-27 (30)
+- Board feel fixes (tested in the browser): a dragged item jumped back to its start for a frame after release (override cleared before the save landed; now kept); dragging highlighted note text (user-select off on the canvas); typing into a just-placed note/text was lost (the press's default focus change blurred the new textarea; pointerdown now prevents it, and new notes show instantly before their save with the text save waiting for it); text boxes grow with their text; empty text boxes are removed; Enter edits the selected note/text; shapes/arrows/lines return to Select with the new item picked; pen uses coalesced pointer samples.
+
 ### 2026-11-19 (29)
 - Windows app for personal use: `desktop/` = Tauri 2 shell (Rust, Edge WebView2) around the web build; built with Rust's GNU toolchain + portable WinLibs MinGW (no Visual Studio). Installer `release/TIMELINER_1.0.0_x64-setup.exe` (≈6 MB). Single instance; data folder chosen in Settings (default `data` next to the app), copied on change, old location migrated on first run; empty/relative paths refused.
 - **Board** tab (branch `feature/board`): table `board_items` (migration 0010), `core/board/view.ts` (camera, zoom-at-cursor, image fit; tested), web/desktop canvas `BoardScreen.web.tsx` (notes, text, rectangles, circles, arrows, lines, pen, eraser, select/move/resize, pan with hand/space/empty drag, wheel/ctrl-wheel zoom, colours, delete key, double-click to type), pictures by drop/paste/file and from web pages (desktop downloads via Rust). Phones show a placeholder. Not synced (images too big for the server rows).

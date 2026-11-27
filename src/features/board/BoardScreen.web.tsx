@@ -29,7 +29,7 @@ type Gesture =
   | { kind: 'pan'; sx: number; sy: number; cam: Cam }
   | { kind: 'move'; id: string; wx: number; wy: number; x: number; y: number }
   | { kind: 'resize'; id: string; wx: number; wy: number; w: number; h: number }
-  | { kind: 'draw'; item: Draft }
+  | { kind: 'draw'; item: Draft; pts: number[] }
   | null;
 type Draft = Omit<BoardItem, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { id: string };
 
@@ -45,6 +45,9 @@ export function BoardScreen() {
   const [editing, setEditing] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Partial<BoardItem>>>({});
   const [draft, setDraft] = useState<Draft | null>(null);
+  // A new note or text box shows (with the cursor in it) before its save lands, so no keystroke is lost.
+  const [pending, setPending] = useState<BoardItem | null>(null);
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
   const [notice, setNotice] = useState<string | null>(null);
   const gesture = useRef<Gesture>(null);
   const area = useRef<HTMLDivElement>(null);
@@ -126,6 +129,12 @@ export function BoardScreen() {
         setSelected(null);
       }
       if (e.key === 'Escape') setSelected(null);
+      // Enter on a selected note or text starts typing in it.
+      const sel = items.find((i) => i.id === selected);
+      if (e.key === 'Enter' && sel && (sel.kind === 'note' || sel.kind === 'text')) {
+        e.preventDefault();
+        setEditing(sel.id);
+      }
     };
     document.addEventListener('paste', onPaste);
     window.addEventListener('keydown', onKey);
@@ -152,6 +161,8 @@ export function BoardScreen() {
 
   const down = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (editing) return;
+    // The board handles the press itself: no browser focus change (it would close a note just opened) or text selection.
+    e.preventDefault();
     area.current!.setPointerCapture(e.pointerId);
     const p = world(e);
     const target = (e.target as HTMLElement).closest('[data-id]') as HTMLElement | null;
@@ -175,11 +186,20 @@ export function BoardScreen() {
       return;
     }
     const base = { id: 'draft', x: Math.round(p.x), y: Math.round(p.y), color, text: null, points: null, image: null, z: topZ() };
-    if (tool === 'note') return void addBoardItem({ ...base, kind: 'note', x: base.x - 100, y: base.y - 100, w: 200, h: 200, text: '' }).then((nid) => (setTool('select'), setSelected(nid), setEditing(nid)));
-    if (tool === 'text') return void addBoardItem({ ...base, kind: 'text', y: base.y - 20, w: 260, h: 48, text: '' }).then((nid) => (setTool('select'), setSelected(nid), setEditing(nid)));
+    if (tool === 'note' || tool === 'text') {
+      const now = Date.now();
+      const box = tool === 'note' ? { x: base.x - 100, y: base.y - 100, w: 200, h: 200 } : { x: base.x, y: base.y - 20, w: 260, h: 48 };
+      const item: BoardItem = { ...base, ...box, kind: tool, text: '', id: crypto.randomUUID(), createdAt: now, updatedAt: now, deletedAt: null };
+      setPending(item);
+      setTool('select');
+      setSelected(item.id);
+      setEditing(item.id);
+      saving.current = addBoardItem(item);
+      return;
+    }
     const kind = tool as BoardKind; // select, hand and eraser returned above
     const d: Draft = { ...base, kind, w: 0, h: 0, points: tool === 'pen' || tool === 'arrow' || tool === 'line' ? '[0,0]' : null };
-    gesture.current = { kind: 'draw', item: d };
+    gesture.current = { kind: 'draw', item: d, pts: [0, 0] };
     setDraft(d);
   };
 
@@ -198,8 +218,15 @@ export function BoardScreen() {
       const d = g.item;
       const dx = Math.round(p.x - d.x);
       const dy = Math.round(p.y - d.y);
-      if (d.kind === 'pen') d.points = JSON.stringify([...JSON.parse(d.points!), dx, dy]);
-      else if (d.kind === 'arrow' || d.kind === 'line') d.points = JSON.stringify([0, 0, dx, dy]);
+      if (d.kind === 'pen') {
+        // Every sample the pointer reported since the last frame, so fast strokes stay smooth.
+        const samples = e.nativeEvent.getCoalescedEvents?.() ?? [];
+        for (const s of samples.length ? samples : [e.nativeEvent]) {
+          const q = world(s);
+          g.pts.push(Math.round(q.x - d.x), Math.round(q.y - d.y));
+        }
+        d.points = JSON.stringify(g.pts);
+      } else if (d.kind === 'arrow' || d.kind === 'line') d.points = JSON.stringify([0, 0, dx, dy]);
       d.w = dx;
       d.h = dy;
       setDraft({ ...d });
@@ -211,25 +238,28 @@ export function BoardScreen() {
     gesture.current = null;
     if (!g || g.kind === 'pan') return;
     if (g.kind === 'move' || g.kind === 'resize') {
+      // The override is kept (same values as the saved copy), so the item never jumps back while saving.
       const patch = overrides[g.id];
       if (patch) await updateBoardItem(g.id, patch);
-      setOverrides((o) => {
-        const { [g.id]: _, ...rest } = o;
-        return rest;
-      });
       return;
     }
     const d = g.item;
-    setDraft(null);
+    let id: string | null = null;
     if (d.kind === 'rect' || d.kind === 'ellipse') {
       // A click without dragging makes a medium shape; a drag in any direction is normalised.
       const tiny = Math.abs(d.w) < 8 && Math.abs(d.h) < 8;
       const [w, h] = tiny ? [180, 120] : [Math.abs(d.w), Math.abs(d.h)];
       const x = tiny ? d.x - 90 : Math.min(d.x, d.x + d.w);
       const y = tiny ? d.y - 60 : Math.min(d.y, d.y + d.h);
-      await addBoardItem({ ...d, x, y, w, h });
+      id = await addBoardItem({ ...d, x, y, w, h });
     } else if (Math.abs(d.w) > 3 || Math.abs(d.h) > 3) {
-      await addBoardItem({ ...d, w: Math.abs(d.w), h: Math.abs(d.h) });
+      id = await addBoardItem({ ...d, w: Math.abs(d.w), h: Math.abs(d.h) });
+    }
+    setDraft(null); // after the save, so the new shape doesn't blink
+    // Shapes, arrows and lines go back to Select with the new one picked; the pen keeps drawing.
+    if (id && d.kind !== 'pen') {
+      setTool('select');
+      setSelected(id);
     }
   };
 
@@ -244,7 +274,7 @@ export function BoardScreen() {
     if (src) await urlToImage(src.replace(/&amp;/g, '&'), at);
   };
 
-  const shown = [...items.map((i) => ({ ...i, ...overrides[i.id] })), ...(draft ? [draft as BoardItem] : [])];
+  const shown = [...items.map((i) => ({ ...i, ...overrides[i.id] })), ...(pending && !items.some((i) => i.id === pending.id) ? [pending] : []), ...(draft ? [draft as BoardItem] : [])];
   const layer: CSSProperties = { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: `scale(${cam.zoom}) translate(${-cam.x}px, ${-cam.y}px)` };
   const cursor = tool === 'hand' ? 'grab' : tool === 'select' ? 'default' : tool === 'eraser' ? 'not-allowed' : 'crosshair';
 
@@ -258,11 +288,11 @@ export function BoardScreen() {
         onPointerCancel={up}
         onDragOver={(e) => e.preventDefault()}
         onDrop={drop}
-        style={{ position: 'relative', flex: 1, overflow: 'hidden', cursor, touchAction: 'none', backgroundImage: `radial-gradient(${c.dots} 1.5px, transparent 1.6px)`, backgroundSize: `${24 * cam.zoom}px ${24 * cam.zoom}px`, backgroundPosition: `${-cam.x * cam.zoom}px ${-cam.y * cam.zoom}px` }}
+        style={{ position: 'relative', flex: 1, overflow: 'hidden', cursor, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', backgroundImage: `radial-gradient(${c.dots} 1.5px, transparent 1.6px)`, backgroundSize: `${24 * cam.zoom}px ${24 * cam.zoom}px`, backgroundPosition: `${-cam.x * cam.zoom}px ${-cam.y * cam.zoom}px` }}
       >
         <div style={layer}>
           {shown.map((it) => (
-            <Item key={it.id} it={it} selected={it.id === selected} editing={it.id === editing} ink={c.ink} accent={c.accentText} onEdit={() => setEditing(it.id)} onEditEnd={(text) => (updateBoardItem(it.id, { text }), setEditing(null))} />
+            <Item key={it.id} it={it} selected={it.id === selected} editing={it.id === editing} ink={c.ink} accent={c.accentText} onEdit={() => setEditing(it.id)} onEditEnd={(text) => (saving.current.then(() => (it.kind === 'text' && !text.trim() ? removeBoardItem(it.id) : updateBoardItem(it.id, { text }))), setEditing(null), setPending(null))} />
           ))}
         </div>
         {!items.length && !draft && (
@@ -371,16 +401,18 @@ function Item({ it, selected, editing, ink, accent, onEdit, onEditEnd }: ItemPro
   }
   // Notes and text: double-click to type.
   const note = it.kind === 'note';
-  const textStyle: CSSProperties = { width: '100%', height: '100%', boxSizing: 'border-box', padding: note ? 14 : 4, fontFamily: F.semi, fontSize: note ? 16 : 22, lineHeight: 1.35, color: note ? '#1A1A2E' : it.color === '#1A1A2E' ? ink : it.color, whiteSpace: 'pre-wrap', overflow: 'hidden', wordBreak: 'break-word' };
+  const textStyle: CSSProperties = { width: '100%', height: note ? '100%' : 'auto', boxSizing: 'border-box', padding: note ? 14 : 4, fontFamily: F.semi, fontSize: note ? 16 : 22, lineHeight: 1.35, color: note ? '#1A1A2E' : it.color === '#1A1A2E' ? ink : it.color, whiteSpace: 'pre-wrap', overflow: 'hidden', wordBreak: 'break-word' };
   return (
-    <div data-id={it.id} onDoubleClick={onEdit} style={{ ...box, ...(note ? { background: it.color, border: '3px solid #07070F', borderRadius: 10, boxShadow: '0 4px 0 #07070F', boxSizing: 'border-box' } : {}) }}>
+    <div data-id={it.id} onDoubleClick={onEdit} style={{ ...box, ...(note ? {} : { height: 'auto', minHeight: it.h }), ...(note ? { background: it.color, border: '3px solid #07070F', borderRadius: 10, boxShadow: '0 4px 0 #07070F', boxSizing: 'border-box' } : {}) }}>
       {editing ? (
         <textarea
           autoFocus
           defaultValue={it.text ?? ''}
           onBlur={(e) => onEditEnd(e.target.value)}
+          // Text boxes grow with what you type.
+          onInput={note ? undefined : (e) => ((e.currentTarget.style.height = 'auto'), (e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`))}
           onPointerDown={(e) => e.stopPropagation()}
-          style={{ ...textStyle, border: 'none', outline: 'none', resize: 'none', background: 'transparent' }}
+          style={{ ...textStyle, border: 'none', outline: 'none', resize: 'none', background: 'transparent', userSelect: 'text', WebkitUserSelect: 'text' }}
         />
       ) : (
         <div style={textStyle}>{it.text || (note ? 'Double-click to write' : 'Double-click to type')}</div>

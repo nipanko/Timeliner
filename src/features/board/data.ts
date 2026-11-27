@@ -13,8 +13,8 @@ export function useBoardItems(): BoardItem[] {
   return useLiveQuery(getDb().select().from(boardItems).where(isNull(boardItems.deletedAt)).orderBy(asc(boardItems.z))).data;
 }
 
-export async function addBoardItem(item: Omit<BoardItem, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
-  const id = randomUUID();
+/** `id` may be chosen by the caller (to show the item before it is saved). */
+export async function addBoardItem({ id = randomUUID(), ...item }: Omit<BoardItem, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { id?: string }) {
   await getDb().insert(boardItems).values({ ...item, id, createdAt: Date.now() });
   return id;
 }
