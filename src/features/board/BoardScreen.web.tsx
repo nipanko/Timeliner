@@ -27,7 +27,7 @@ const MAX_IMAGE = 1600; // px on the longer side; pictures are stored in the loc
 
 type Gesture =
   | { kind: 'pan'; sx: number; sy: number; cam: Cam }
-  | { kind: 'move'; id: string; wx: number; wy: number; x: number; y: number }
+  | { kind: 'move'; id: string; wx: number; wy: number; x: number; y: number; again: boolean; moved: boolean }
   | { kind: 'resize'; id: string; wx: number; wy: number; w: number; h: number }
   | { kind: 'draw'; item: Draft; pts: number[] }
   | null;
@@ -53,6 +53,8 @@ export function BoardScreen() {
   const area = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const space = useRef(false);
+  // Double-click is detected here: the board captures the pointer, so the browser's dblclick never reaches an item.
+  const lastPress = useRef({ id: '', t: 0 });
 
   const topZ = () => items.reduce((m, i) => Math.max(m, i.z), 0) + 1;
   const local = (e: { clientX: number; clientY: number }) => {
@@ -180,9 +182,11 @@ export function BoardScreen() {
     }
     if (tool === 'select' && item) {
       setSelected(item.id);
+      const again = lastPress.current.id === item.id && e.timeStamp - lastPress.current.t < 450;
+      lastPress.current = { id: item.id, t: e.timeStamp };
       gesture.current = (e.target as HTMLElement).dataset.handle
         ? { kind: 'resize', id: item.id, wx: p.x, wy: p.y, w: item.w, h: item.h }
-        : { kind: 'move', id: item.id, wx: p.x, wy: p.y, x: item.x, y: item.y };
+        : { kind: 'move', id: item.id, wx: p.x, wy: p.y, x: item.x, y: item.y, again: again && (item.kind === 'note' || item.kind === 'text'), moved: false };
       return;
     }
     const base = { id: 'draft', x: Math.round(p.x), y: Math.round(p.y), color, text: null, points: null, image: null, z: topZ() };
@@ -211,6 +215,7 @@ export function BoardScreen() {
       const { sx, sy } = local(e);
       setCam({ ...g.cam, x: g.cam.x - (sx - g.sx) / g.cam.zoom, y: g.cam.y - (sy - g.sy) / g.cam.zoom });
     } else if (g.kind === 'move') {
+      if (Math.abs(p.x - g.wx) + Math.abs(p.y - g.wy) > 4 / cam.zoom) g.moved = true;
       setOverrides((o) => ({ ...o, [g.id]: { x: Math.round(g.x + p.x - g.wx), y: Math.round(g.y + p.y - g.wy) } }));
     } else if (g.kind === 'resize') {
       setOverrides((o) => ({ ...o, [g.id]: { w: Math.max(24, Math.round(g.w + p.x - g.wx)), h: Math.max(24, Math.round(g.h + p.y - g.wy)) } }));
@@ -237,6 +242,12 @@ export function BoardScreen() {
     const g = gesture.current;
     gesture.current = null;
     if (!g || g.kind === 'pan') return;
+    // A double-click is two clicks without moving: start typing on the second release.
+    if (g.kind === 'move' && g.again && !g.moved) {
+      // After the browser's own dblclick handling, or it would select the word under the cursor in the new text box.
+      setTimeout(() => setEditing(g.id), 0);
+      return;
+    }
     if (g.kind === 'move' || g.kind === 'resize') {
       // The override is kept (same values as the saved copy), so the item never jumps back while saving.
       const patch = overrides[g.id];
@@ -292,7 +303,7 @@ export function BoardScreen() {
       >
         <div style={layer}>
           {shown.map((it) => (
-            <Item key={it.id} it={it} selected={it.id === selected} editing={it.id === editing} ink={c.ink} accent={c.accentText} onEdit={() => setEditing(it.id)} onEditEnd={(text) => (saving.current.then(() => (it.kind === 'text' && !text.trim() ? removeBoardItem(it.id) : updateBoardItem(it.id, { text }))), setEditing(null), setPending(null))} />
+            <Item key={it.id} it={it} selected={it.id === selected} editing={it.id === editing} ink={c.ink} accent={c.accentText} onEditEnd={(text) => (saving.current.then(() => (it.kind === 'text' && !text.trim() ? removeBoardItem(it.id) : updateBoardItem(it.id, { text }))), setEditing(null), setPending(null))} />
           ))}
         </div>
         {!items.length && !draft && (
@@ -365,9 +376,9 @@ export function BoardScreen() {
   );
 }
 
-type ItemProps = { it: BoardItem; selected: boolean; editing: boolean; ink: string; accent: string; onEdit: () => void; onEditEnd: (text: string) => void };
+type ItemProps = { it: BoardItem; selected: boolean; editing: boolean; ink: string; accent: string; onEditEnd: (text: string) => void };
 
-function Item({ it, selected, editing, ink, accent, onEdit, onEditEnd }: ItemProps) {
+function Item({ it, selected, editing, ink, accent, onEditEnd }: ItemProps) {
   const box: CSSProperties = { position: 'absolute', left: it.x, top: it.y, width: it.w, height: it.h, zIndex: it.z, outline: selected ? `2px dashed ${accent}` : 'none', outlineOffset: 4 };
   const handle = selected && it.kind !== 'pen' && it.kind !== 'arrow' && it.kind !== 'line' && <div data-id={it.id} data-handle="1" style={{ position: 'absolute', right: -10, bottom: -10, width: 14, height: 14, borderRadius: 4, background: accent, cursor: 'nwse-resize' }} />;
 
@@ -403,12 +414,18 @@ function Item({ it, selected, editing, ink, accent, onEdit, onEditEnd }: ItemPro
   const note = it.kind === 'note';
   const textStyle: CSSProperties = { width: '100%', height: note ? '100%' : 'auto', boxSizing: 'border-box', padding: note ? 14 : 4, fontFamily: F.semi, fontSize: note ? 16 : 22, lineHeight: 1.35, color: note ? '#1A1A2E' : it.color === '#1A1A2E' ? ink : it.color, whiteSpace: 'pre-wrap', overflow: 'hidden', wordBreak: 'break-word' };
   return (
-    <div data-id={it.id} onDoubleClick={onEdit} style={{ ...box, ...(note ? {} : { height: 'auto', minHeight: it.h }), ...(note ? { background: it.color, border: '3px solid #07070F', borderRadius: 10, boxShadow: '0 4px 0 #07070F', boxSizing: 'border-box' } : {}) }}>
+    <div data-id={it.id} style={{ ...box, ...(note ? {} : { height: 'auto', minHeight: it.h }), ...(note ? { background: it.color, border: '3px solid #07070F', borderRadius: 10, boxShadow: '0 4px 0 #07070F', boxSizing: 'border-box' } : {}) }}>
       {editing ? (
         <textarea
           autoFocus
           defaultValue={it.text ?? ''}
           onBlur={(e) => onEditEnd(e.target.value)}
+          // Cursor at the end of what's there, ready to keep writing; text boxes fit their text from the start.
+          onFocus={(e) => {
+            const t = e.currentTarget;
+            t.setSelectionRange(t.value.length, t.value.length);
+            if (!note) t.style.height = `${t.scrollHeight}px`;
+          }}
           // Text boxes grow with what you type.
           onInput={note ? undefined : (e) => ((e.currentTarget.style.height = 'auto'), (e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`))}
           onPointerDown={(e) => e.stopPropagation()}

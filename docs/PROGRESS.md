@@ -13,6 +13,9 @@ Claude reads this first in every session and updates it at the end. Newest entry
 - **Blocked on:** —
 
 ## Session log
+### 2026-11-27 (31)
+- Board double-click to write was broken: the canvas captures the pointer, so the browser's dblclick never reached the item. Now the board detects it itself: two presses on the same note/text within 450 ms without moving open it on the second release (deferred a tick so the browser's own dblclick can't select a word in the new box); cursor goes to the end of the text; a quick click-then-drag still moves. Tested in the browser (note, text box, click-then-drag, two slow clicks, reload).
+
 ### 2026-11-27 (30)
 - Board feel fixes (tested in the browser): a dragged item jumped back to its start for a frame after release (override cleared before the save landed; now kept); dragging highlighted note text (user-select off on the canvas); typing into a just-placed note/text was lost (the press's default focus change blurred the new textarea; pointerdown now prevents it, and new notes show instantly before their save with the text save waiting for it); text boxes grow with their text; empty text boxes are removed; Enter edits the selected note/text; shapes/arrows/lines return to Select with the new item picked; pen uses coalesced pointer samples.
 
