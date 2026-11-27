@@ -54,7 +54,15 @@ export function BoardScreen() {
   const fileInput = useRef<HTMLInputElement>(null);
   const space = useRef(false);
   // Double-click is detected here: the board captures the pointer, so the browser's dblclick never reaches an item.
-  const lastPress = useRef({ id: '', t: 0 });
+  const lastPress = useRef({ id: '', t: 0, x: 0, y: 0 });
+  // Same thing pressed again within the usual Windows double-click time, and the mouse barely moved.
+  const isDouble = (id: string, e: ReactPointerEvent) => {
+    const l = lastPress.current;
+    const again = l.id === id && e.timeStamp - l.t < 500 && Math.hypot(e.clientX - l.x, e.clientY - l.y) < 10;
+    lastPress.current = { id, t: e.timeStamp, x: e.clientX, y: e.clientY };
+    return again;
+  };
+  const writable = (k: BoardKind) => k === 'note' || k === 'text' || k === 'rect' || k === 'ellipse';
 
   const topZ = () => items.reduce((m, i) => Math.max(m, i.z), 0) + 1;
   const local = (e: { clientX: number; clientY: number }) => {
@@ -133,7 +141,7 @@ export function BoardScreen() {
       if (e.key === 'Escape') setSelected(null);
       // Enter on a selected note or text starts typing in it.
       const sel = items.find((i) => i.id === selected);
-      if (e.key === 'Enter' && sel && (sel.kind === 'note' || sel.kind === 'text')) {
+      if (e.key === 'Enter' && sel && writable(sel.kind)) {
         e.preventDefault();
         setEditing(sel.id);
       }
@@ -170,6 +178,21 @@ export function BoardScreen() {
     const target = (e.target as HTMLElement).closest('[data-id]') as HTMLElement | null;
     const id = target?.dataset.id ?? null;
     const item = items.find((i) => i.id === id);
+    const base = { id: 'draft', x: Math.round(p.x), y: Math.round(p.y), color, text: null, points: null, image: null, z: topZ() };
+    // A new note or text box shows (cursor in it) before its save lands, so no keystroke is lost.
+    const startWriting = (kind: 'note' | 'text') => {
+      const now = Date.now();
+      const box = kind === 'note' ? { x: base.x - 100, y: base.y - 100, w: 200, h: 200 } : { x: base.x, y: base.y - 20, w: 260, h: 48 };
+      const it: BoardItem = { ...base, ...box, kind, text: '', id: crypto.randomUUID(), createdAt: now, updatedAt: now, deletedAt: null };
+      setPending(it);
+      setTool('select');
+      setSelected(it.id);
+      // After the browser's own dblclick handling, which would otherwise select text in the new box.
+      setTimeout(() => setEditing(it.id), 0);
+      saving.current = addBoardItem(it);
+    };
+    // Double-click on empty space: start typing right there.
+    if (tool === 'select' && !item && e.button === 0 && !space.current && isDouble('canvas', e)) return startWriting('text');
     if (tool === 'hand' || e.button === 1 || space.current || (tool === 'select' && !item)) {
       setSelected(null);
       const { sx, sy } = local(e);
@@ -182,25 +205,13 @@ export function BoardScreen() {
     }
     if (tool === 'select' && item) {
       setSelected(item.id);
-      const again = lastPress.current.id === item.id && e.timeStamp - lastPress.current.t < 450;
-      lastPress.current = { id: item.id, t: e.timeStamp };
+      const again = isDouble(item.id, e);
       gesture.current = (e.target as HTMLElement).dataset.handle
         ? { kind: 'resize', id: item.id, wx: p.x, wy: p.y, w: item.w, h: item.h }
-        : { kind: 'move', id: item.id, wx: p.x, wy: p.y, x: item.x, y: item.y, again: again && (item.kind === 'note' || item.kind === 'text'), moved: false };
+        : { kind: 'move', id: item.id, wx: p.x, wy: p.y, x: item.x, y: item.y, again: again && writable(item.kind), moved: false };
       return;
     }
-    const base = { id: 'draft', x: Math.round(p.x), y: Math.round(p.y), color, text: null, points: null, image: null, z: topZ() };
-    if (tool === 'note' || tool === 'text') {
-      const now = Date.now();
-      const box = tool === 'note' ? { x: base.x - 100, y: base.y - 100, w: 200, h: 200 } : { x: base.x, y: base.y - 20, w: 260, h: 48 };
-      const item: BoardItem = { ...base, ...box, kind: tool, text: '', id: crypto.randomUUID(), createdAt: now, updatedAt: now, deletedAt: null };
-      setPending(item);
-      setTool('select');
-      setSelected(item.id);
-      setEditing(item.id);
-      saving.current = addBoardItem(item);
-      return;
-    }
+    if (tool === 'note' || tool === 'text') return startWriting(tool);
     const kind = tool as BoardKind; // select, hand and eraser returned above
     const d: Draft = { ...base, kind, w: 0, h: 0, points: tool === 'pen' || tool === 'arrow' || tool === 'line' ? '[0,0]' : null };
     gesture.current = { kind: 'draw', item: d, pts: [0, 0] };
@@ -215,7 +226,7 @@ export function BoardScreen() {
       const { sx, sy } = local(e);
       setCam({ ...g.cam, x: g.cam.x - (sx - g.sx) / g.cam.zoom, y: g.cam.y - (sy - g.sy) / g.cam.zoom });
     } else if (g.kind === 'move') {
-      if (Math.abs(p.x - g.wx) + Math.abs(p.y - g.wy) > 4 / cam.zoom) g.moved = true;
+      if (Math.hypot(p.x - g.wx, p.y - g.wy) * cam.zoom > 8) g.moved = true; // a little hand wobble is still a click
       setOverrides((o) => ({ ...o, [g.id]: { x: Math.round(g.x + p.x - g.wx), y: Math.round(g.y + p.y - g.wy) } }));
     } else if (g.kind === 'resize') {
       setOverrides((o) => ({ ...o, [g.id]: { w: Math.max(24, Math.round(g.w + p.x - g.wx)), h: Math.max(24, Math.round(g.h + p.y - g.wy)) } }));
@@ -403,18 +414,17 @@ function Item({ it, selected, editing, ink, accent, onEditEnd }: ItemProps) {
       </div>
     );
   }
-  if (it.kind === 'rect' || it.kind === 'ellipse') {
-    return (
-      <div data-id={it.id} style={{ ...box, border: `3px solid ${it.color}`, background: `${it.color}33`, borderRadius: it.kind === 'ellipse' ? '50%' : 10, boxSizing: 'border-box' }}>
-        {handle}
-      </div>
-    );
-  }
-  // Notes and text: double-click to type.
+  // Notes, text and shapes: double-click to type.
   const note = it.kind === 'note';
-  const textStyle: CSSProperties = { width: '100%', height: note ? '100%' : 'auto', boxSizing: 'border-box', padding: note ? 14 : 4, fontFamily: F.semi, fontSize: note ? 16 : 22, lineHeight: 1.35, color: note ? '#1A1A2E' : it.color === '#1A1A2E' ? ink : it.color, whiteSpace: 'pre-wrap', overflow: 'hidden', wordBreak: 'break-word' };
+  const shape = it.kind === 'rect' || it.kind === 'ellipse';
+  const textStyle: CSSProperties = { width: '100%', height: note || shape ? '100%' : 'auto', boxSizing: 'border-box', padding: note ? 14 : shape ? 12 : 4, fontFamily: F.semi, fontSize: note ? 16 : shape ? 17 : 22, lineHeight: 1.35, color: note ? '#1A1A2E' : shape || it.color === '#1A1A2E' ? ink : it.color, whiteSpace: 'pre-wrap', overflow: 'hidden', wordBreak: 'break-word', ...(shape ? { display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' } : {}) };
+  const frame: CSSProperties = note
+    ? { background: it.color, border: '3px solid #07070F', borderRadius: 10, boxShadow: '0 4px 0 #07070F', boxSizing: 'border-box' }
+    : shape
+      ? { border: `3px solid ${it.color}`, background: `${it.color}33`, borderRadius: it.kind === 'ellipse' ? '50%' : 10, boxSizing: 'border-box' }
+      : { height: 'auto', minHeight: it.h };
   return (
-    <div data-id={it.id} style={{ ...box, ...(note ? {} : { height: 'auto', minHeight: it.h }), ...(note ? { background: it.color, border: '3px solid #07070F', borderRadius: 10, boxShadow: '0 4px 0 #07070F', boxSizing: 'border-box' } : {}) }}>
+    <div data-id={it.id} style={{ ...box, ...frame }}>
       {editing ? (
         <textarea
           autoFocus
@@ -424,15 +434,15 @@ function Item({ it, selected, editing, ink, accent, onEditEnd }: ItemProps) {
           onFocus={(e) => {
             const t = e.currentTarget;
             t.setSelectionRange(t.value.length, t.value.length);
-            if (!note) t.style.height = `${t.scrollHeight}px`;
+            if (!note && !shape) t.style.height = `${t.scrollHeight}px`;
           }}
           // Text boxes grow with what you type.
-          onInput={note ? undefined : (e) => ((e.currentTarget.style.height = 'auto'), (e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`))}
+          onInput={note || shape ? undefined : (e) => ((e.currentTarget.style.height = 'auto'), (e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`))}
           onPointerDown={(e) => e.stopPropagation()}
-          style={{ ...textStyle, border: 'none', outline: 'none', resize: 'none', background: 'transparent', userSelect: 'text', WebkitUserSelect: 'text' }}
+          style={{ ...textStyle, ...(shape ? { display: 'block', paddingTop: '30%' } : {}), border: 'none', outline: 'none', resize: 'none', background: 'transparent', userSelect: 'text', WebkitUserSelect: 'text' }}
         />
       ) : (
-        <div style={textStyle}>{it.text || (note ? 'Double-click to write' : 'Double-click to type')}</div>
+        <div style={textStyle}>{it.text || (shape ? '' : note ? 'Double-click to write' : 'Double-click to type')}</div>
       )}
       {handle}
     </div>
